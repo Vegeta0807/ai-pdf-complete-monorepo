@@ -34,11 +34,30 @@ router.post('/message', chatValidation, async (req, res) => {
       success: true,
       data: {
         response: aiResponse.text,
-        sources: relevantChunks.map(chunk => ({
+        sources: relevantChunks.map((chunk, index) => ({
+          id: index + 1,
           content: chunk.content.substring(0, 200) + '...',
           similarity: chunk.similarity,
+          pageNumber: chunk.metadata?.page_number || null,
+          chunkIndex: chunk.metadata?.chunk_index || null,
           metadata: chunk.metadata
         })),
+        citations: relevantChunks.map((chunk, index) => {
+          const pageNumber = chunk.metadata?.page_number;
+          const totalPages = chunk.metadata?.num_pages || 1;
+
+          // Validate page number
+          const validPageNumber = (pageNumber && pageNumber >= 1 && pageNumber <= totalPages) ? pageNumber : null;
+
+          return {
+            id: index + 1,
+            pageNumber: validPageNumber,
+            text: chunk.content.substring(0, 100) + '...',
+            sourceLabel: validPageNumber
+              ? `Source ${index + 1} (Page ${validPageNumber})`
+              : `Source ${index + 1}`
+          };
+        }),
         confidence: aiResponse.confidence,
         tokensUsed: aiResponse.tokensUsed
       }

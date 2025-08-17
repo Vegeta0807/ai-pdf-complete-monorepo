@@ -6,16 +6,27 @@ const FormData = require('form-data');
 /**
  * Process PDF using pdf-parse (local processing)
  * @param {string} filePath - Path to the PDF file
- * @returns {Promise<string>} - Extracted text content
+ * @returns {Promise<object>} - Extracted text content with page information
  */
 async function processPDFLocal(filePath) {
   try {
     const dataBuffer = await fs.readFile(filePath);
     const data = await pdfParse(dataBuffer);
-    
+
     console.log(`📄 PDF processed locally: ${data.numpages} pages, ${data.text.length} characters`);
-    
-    return data.text;
+
+    // Return both text and page count
+    return {
+      text: data.text,
+      numPages: data.numpages,
+      metadata: {
+        title: data.info?.Title || null,
+        author: data.info?.Author || null,
+        creator: data.info?.Creator || null,
+        producer: data.info?.Producer || null,
+        creationDate: data.info?.CreationDate || null
+      }
+    };
   } catch (error) {
     console.error('Local PDF processing error:', error);
     throw new Error(`Failed to process PDF locally: ${error.message}`);
@@ -25,7 +36,7 @@ async function processPDFLocal(filePath) {
 /**
  * Process PDF using LlamaParse API (cloud processing)
  * @param {string} filePath - Path to the PDF file
- * @returns {Promise<string>} - Extracted markdown content
+ * @returns {Promise<object>} - Extracted text content with page information
  */
 async function processPDFWithLlamaParse(filePath) {
   try {
@@ -68,14 +79,34 @@ async function processPDFWithLlamaParse(filePath) {
 
     if (result && result.length > 0) {
       console.log(`📄 PDF processed with LlamaParse: ${result.length} characters`);
-      return result;
+
+      // Get accurate page count using pdf-parse (just for metadata)
+      let actualPages = 1; // fallback
+      try {
+        const dataBuffer = await fs.readFile(filePath);
+        const pdfData = await pdfParse(dataBuffer);
+        actualPages = pdfData.numpages;
+        console.log(`📊 Accurate page count from pdf-parse: ${actualPages} pages`);
+      } catch (pageCountError) {
+        console.warn('⚠️ Could not get accurate page count, using estimation');
+        actualPages = Math.max(1, Math.ceil(result.length / 2000)); // Rough estimate as fallback
+      }
+
+      return {
+        text: result,
+        numPages: actualPages,
+        metadata: {
+          source: 'LlamaParse',
+          processingMethod: 'cloud'
+        }
+      };
     } else {
       throw new Error('No content returned from LlamaParse API');
     }
 
   } catch (error) {
     console.error('LlamaParse processing error:', error);
-    
+
     // Fallback to local processing if LlamaParse fails
     console.log('🔄 Falling back to local PDF processing...');
     return await processPDFLocal(filePath);
@@ -144,7 +175,7 @@ async function pollLlamaParseJob(apiKey, jobId) {
 /**
  * Main PDF processing function with fallback strategy
  * @param {string} filePath - Path to the PDF file
- * @returns {Promise<string>} - Extracted text content
+ * @returns {Promise<object>} - Extracted text content with page information
  */
 async function processPDF(filePath) {
   try {
@@ -175,21 +206,27 @@ async function processPDF(filePath) {
  * @param {string} text - Text to chunk
  * @param {number} chunkSize - Maximum characters per chunk
  * @param {number} overlap - Character overlap between chunks
- * @returns {Array<string>} - Array of text chunks
+ * @param {number} totalPages - Total number of pages in the document
+ * @returns {Array<object>} - Array of text chunks with page information
  */
-function chunkText(text, chunkSize = 1000, overlap = 200) {
+function chunkText(text, chunkSize = 1000, overlap = 200, totalPages = 1) {
   const chunks = [];
   let start = 0;
 
+  // More conservative page estimation
+  const avgCharsPerPage = Math.max(500, text.length / Math.max(totalPages, 1));
+
+  console.log(`📊 Chunking: ${text.length} chars, ${totalPages} pages, ${Math.round(avgCharsPerPage)} chars/page`);
+
   while (start < text.length) {
     let end = start + chunkSize;
-    
+
     // If we're not at the end, try to break at a sentence or paragraph
     if (end < text.length) {
       const lastPeriod = text.lastIndexOf('.', end);
       const lastNewline = text.lastIndexOf('\n', end);
       const breakPoint = Math.max(lastPeriod, lastNewline);
-      
+
       if (breakPoint > start + chunkSize * 0.5) {
         end = breakPoint + 1;
       }
@@ -197,13 +234,39 @@ function chunkText(text, chunkSize = 1000, overlap = 200) {
 
     const chunk = text.slice(start, end).trim();
     if (chunk.length > 0) {
-      chunks.push(chunk);
+      // Conservative page estimation with accurate total pages
+      const chunkMiddle = start + (end - start) / 2;
+      const rawPageEstimate = chunkMiddle / avgCharsPerPage;
+
+      // Use more conservative estimation
+      let estimatedPage = Math.max(1, Math.floor(rawPageEstimate) + 1);
+
+      // Ensure we don't exceed actual page count
+      estimatedPage = Math.min(estimatedPage, totalPages);
+      estimatedPage = Math.max(1, estimatedPage);
+
+      chunks.push({
+        text: chunk,
+        startChar: start,
+        endChar: end,
+        estimatedPage: estimatedPage,
+        chunkIndex: chunks.length
+      });
     }
 
     start = end - overlap;
   }
 
-  console.log(`📝 Text chunked into ${chunks.length} pieces`);
+  // Debug: Log page distribution
+  const pageDistribution = chunks.reduce((acc, chunk) => {
+    acc[chunk.estimatedPage] = (acc[chunk.estimatedPage] || 0) + 1;
+    return acc;
+  }, {});
+
+  console.log(`📝 Text chunked into ${chunks.length} pieces with page estimates`);
+  console.log(`📊 Page distribution:`, pageDistribution);
+  console.log(`📄 Total pages: ${totalPages}, Avg chars per page: ${Math.round(avgCharsPerPage)}`);
+
   return chunks;
 }
 

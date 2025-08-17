@@ -7,26 +7,44 @@ const axios = require('axios');
  */
 async function generateEmbeddingsHuggingFace(texts) {
   try {
+    // Use the NEW correct API URL from Hugging Face
     const model = 'sentence-transformers/all-MiniLM-L6-v2';
-    const apiUrl = `https://api-inference.huggingface.co/models/${model}`;
-    
-    const response = await axios.post(apiUrl, {
-      inputs: texts,
-      options: { wait_for_model: true }
-    }, {
-      headers: {
-        'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY || ''}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: 30000
-    });
+    const apiUrl = `https://router.huggingface.co/hf-inference/models/${model}/pipeline/feature-extraction`;
 
-    if (Array.isArray(response.data) && Array.isArray(response.data[0])) {
-      console.log(`🔢 Generated ${response.data.length} embeddings using Hugging Face`);
-      return response.data;
-    } else {
-      throw new Error('Invalid response format from Hugging Face API');
+    const embeddings = [];
+
+    for (const text of texts) {
+      // Truncate text to avoid token limits
+      const truncatedText = text.substring(0, 500);
+
+      const response = await axios.post(apiUrl, {
+        inputs: [truncatedText] // Note: inputs should be an array
+      }, {
+        headers: {
+          'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000
+      });
+
+      // Handle the response format from feature extraction pipeline
+      if (Array.isArray(response.data) && Array.isArray(response.data[0])) {
+        // Response is an array of embeddings, take the first one
+        embeddings.push(response.data[0]);
+      } else if (Array.isArray(response.data)) {
+        // Response is a single embedding
+        embeddings.push(response.data);
+      } else {
+        console.log('Unexpected response format:', response.data);
+        throw new Error('Unexpected response format from Hugging Face');
+      }
+
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
+
+    console.log(`🔢 Generated ${embeddings.length} embeddings using Hugging Face`);
+    return embeddings;
 
   } catch (error) {
     console.error('Hugging Face embedding error:', error.response?.data || error.message);

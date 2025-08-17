@@ -74,7 +74,7 @@ export class PdfStateService {
         console.log('PDF State Service: Upload successful, updating state with documentId:', response.documentId); // Debug log
         this.updateState({
           pdfId: response.documentId, // Map documentId to pdfId for internal use
-          pages: response.chunksCreated, // Use chunksCreated as pages equivalent
+          pages: response.numPages || response.chunksCreated, // Use numPages from backend, fallback to chunksCreated
           isUploading: false,
           isUploaded: true,
           uploadError: null

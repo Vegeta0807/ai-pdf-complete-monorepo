@@ -66,26 +66,48 @@ class VectorService {
     try {
       await this.initialize();
 
-      // Chunk the text
-      const chunks = chunkText(text, 1000, 200);
-      
+      // Chunk the text with page information
+      const totalPages = metadata.numPages || 1;
+      const chunks = chunkText(text, 1000, 200, totalPages);
+
       if (chunks.length === 0) {
         throw new Error('No text chunks generated from document');
       }
 
       // Generate embeddings for all chunks
       console.log(`🔄 Generating embeddings for ${chunks.length} chunks...`);
-      const embeddings = await generateEmbeddings(chunks);
+      const chunkTexts = chunks.map(chunk => chunk.text);
+      const embeddings = await generateEmbeddings(chunkTexts);
 
       // Prepare data for Chroma
       const ids = chunks.map((_, index) => `${documentId}_chunk_${index}`);
-      const documents = chunks;
-      const metadatas = chunks.map((chunk, index) => ({
-        document_id: documentId,
-        chunk_index: index,
-        chunk_text: chunk.substring(0, 100) + '...',
-        ...metadata
-      }));
+      const documents = chunkTexts;
+      const metadatas = chunks.map((chunk, index) => {
+        const cleanMetadata = {
+          document_id: String(documentId),
+          chunk_index: Number(index),
+          chunk_text: String(chunk.text.substring(0, 100) + '...'),
+          page_number: Number(chunk.estimatedPage),
+          start_char: Number(chunk.startChar),
+          end_char: Number(chunk.endChar),
+          filename: metadata.filename ? String(metadata.filename) : null,
+          uploaded_at: metadata.uploadedAt ? String(metadata.uploadedAt) : null,
+          file_size: metadata.fileSize ? Number(metadata.fileSize) : null,
+          num_pages: metadata.numPages ? Number(metadata.numPages) : null
+        };
+
+        // Only add PDF metadata if it exists and is valid
+        if (metadata.pdfMetadata) {
+          if (metadata.pdfMetadata.title) cleanMetadata.pdf_title = String(metadata.pdfMetadata.title);
+          if (metadata.pdfMetadata.author) cleanMetadata.pdf_author = String(metadata.pdfMetadata.author);
+          if (metadata.pdfMetadata.creator) cleanMetadata.pdf_creator = String(metadata.pdfMetadata.creator);
+          if (metadata.pdfMetadata.source) cleanMetadata.pdf_source = String(metadata.pdfMetadata.source);
+          if (metadata.pdfMetadata.processingMethod) cleanMetadata.processing_method = String(metadata.pdfMetadata.processingMethod);
+        }
+
+        return cleanMetadata;
+      });
+
 
       // Store in Chroma
       await this.collection.add({

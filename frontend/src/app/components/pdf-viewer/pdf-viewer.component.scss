@@ -1,134 +1,102 @@
 .pdf-viewer-container {
-  @apply h-full flex flex-col bg-transparent;
+  @apply h-full flex flex-col bg-white;
 }
 
-.pdf-toolbar {
-  @apply bg-white/5 backdrop-blur-sm border-b border-white/10 px-5 py-3;
+.upload-section {
+  @apply flex-1 flex items-center justify-center p-8;
 }
 
-.toolbar-content {
-  @apply flex-between gap-4;
-}
+.upload-area {
+  @apply text-center p-8 border-2 border-dashed border-gray-300 rounded-lg
+         cursor-pointer hover:border-blue-400 transition-colors bg-gray-50;
 
-.nav-controls, .zoom-controls, .toolbar-actions {
-  @apply flex items-center gap-2;
-}
-
-.toolbar-btn {
-  @apply w-8 h-8 bg-white/10 border border-white/20 rounded-lg
-         flex-center text-white/80 cursor-pointer
-         transition-all duration-300 ease-out;
-
-  &:hover:not(:disabled) {
-    @apply bg-white/20 text-white;
-    transform: translateY(-1px);
+  &:hover {
+    @apply bg-blue-50;
   }
-
-  &:disabled {
-    @apply opacity-40 cursor-not-allowed;
-  }
-
-  mat-icon {
-    @apply text-lg w-[18px] h-[18px];
-  }
-}
-
-.page-info, .zoom-info {
-  @apply text-white/80 text-sm font-medium min-w-[60px] text-center;
-}
-
-.pdf-content {
-  @apply flex-1 flex flex-col overflow-hidden;
-}
-
-.debug-info {
-  @apply bg-gray-100 p-2.5 m-2.5 rounded border-2 border-red-500 text-xs;
-
-  p {
-    @apply my-0.5 text-gray-700;
-  }
-}
-
-.simple-pdf-display {
-  @apply flex-1 w-full p-5;
-
-  iframe {
-    @apply w-full h-[calc(100vh-200px)] border border-white/20 rounded-xl shadow-dark;
-  }
-}
-
-.upload-state, .error-state {
-  @apply flex-col-center text-center py-10 px-5 text-white/80;
-}
-
-.upload-content {
-  @apply max-w-xs;
 }
 
 .upload-icon {
-  @apply w-20 h-20 bg-white/10 border-2 border-dashed border-white/30
-         rounded-full flex-center mx-auto mb-5;
-
-  mat-icon {
-    @apply text-4xl w-9 h-9 text-white/60;
-  }
+  @apply text-6xl text-gray-400 mb-4;
 }
 
-.upload-state h3 {
-  @apply text-white text-lg font-semibold m-0 mb-2;
+.pdf-controls {
+  @apply bg-gray-50 border-b border-gray-200 p-3 flex items-center justify-between flex-shrink-0;
 }
 
-.upload-state p {
-  @apply text-white/70 text-sm m-0 mb-6;
+.control-group {
+  @apply flex items-center space-x-2;
 }
 
-.upload-btn, .retry-btn {
-  @apply bg-gradient-to-r from-purple-600 to-purple-700 border-0 rounded-xl
-         px-6 py-3 text-white font-semibold cursor-pointer
-         transition-all duration-300 ease-out flex items-center gap-2;
+.toolbar-btn {
+  @apply w-10 h-10 flex items-center justify-center rounded-full
+         hover:bg-gray-200 transition-colors duration-200;
 
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  &:disabled {
+    @apply opacity-50 cursor-not-allowed;
   }
 
   mat-icon {
-    @apply text-lg w-[18px] h-[18px];
+    @apply text-xl;
   }
 }
 
-.error-state {
+.pdf-content {
+  @apply h-full flex flex-col;
+}
+
+.error-message {
+  @apply bg-red-50 border border-red-200 rounded-lg p-4 m-4 flex items-center space-x-2;
+
   mat-icon {
-    @apply text-5xl w-12 h-12 text-red-500 mb-4;
+    @apply text-red-500;
   }
+
+  span {
+    @apply text-red-700;
+  }
+}
+
+.loading-container {
+  @apply flex-1 flex flex-col items-center justify-center;
 
   p {
-    @apply text-gray-500 text-sm mb-5;
+    @apply mt-4 text-gray-600;
   }
 }
 
+.pdf-display {
+  @apply flex-1 overflow-auto;
+
+  pdf-viewer {
+    @apply w-full h-full block;
+
+    // Ensure PDF pages are scrollable
+    ::ng-deep .ng2-pdf-viewer-container {
+      @apply overflow-auto;
+      height: 100% !important;
+    }
+
+    ::ng-deep .pdfViewer {
+      @apply overflow-auto;
+    }
+  }
+}
+
+// Responsive design
 @media (max-width: 768px) {
-  .toolbar-content {
-    @apply flex-col gap-3;
+  .pdf-controls {
+    @apply flex-col space-y-2 p-2;
   }
 
-  .nav-controls, .zoom-controls, .toolbar-actions {
+  .control-group {
     @apply justify-center;
   }
 
-  .pdf-display {
-    @apply p-2;
-  }
-
-  .upload-state, .error-state {
-    @apply py-5 px-4;
+  .upload-area {
+    @apply p-4;
   }
 
   .upload-icon {
-    @apply w-16 h-16;
-
-    mat-icon {
-      @apply text-3xl w-7 h-7;
-    }
+    @apply text-4xl mb-2;
   }
 }

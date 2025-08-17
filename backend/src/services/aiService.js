@@ -14,22 +14,26 @@ async function generateResponseGroq(message, relevantChunks, conversationHistory
       apiKey: process.env.GROQ_API_KEY
     });
 
-    // Build context from relevant chunks
+    // Build context from relevant chunks with page information
     const context = relevantChunks
-      .map(chunk => chunk.content)
+      .map((chunk, index) => {
+        const pageInfo = chunk.metadata?.page_number ? ` (Page ${chunk.metadata.page_number})` : '';
+        return `[Source ${index + 1}${pageInfo}]: ${chunk.content}`;
+      })
       .join('\n\n---\n\n');
 
     // Build conversation history
     const messages = [
       {
         role: 'system',
-        content: `You are a helpful AI assistant that answers questions based on the provided PDF document context. 
+        content: `You are a helpful AI assistant that answers questions based on the provided PDF document context.
 
 INSTRUCTIONS:
 - Use ONLY the information provided in the context below to answer questions
 - If the context doesn't contain relevant information, say so clearly
 - Be concise but comprehensive in your responses
-- Cite specific parts of the document when possible
+- When referencing information, include citations in the format [Source X] where X is the source number
+- Each source corresponds to a specific part of the document with page information when available
 - If asked about something not in the context, politely explain that the information isn't available in the uploaded document
 
 CONTEXT FROM PDF:

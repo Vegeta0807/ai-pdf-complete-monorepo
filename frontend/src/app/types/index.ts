@@ -12,16 +12,36 @@ export interface ChatMessage {
   content: string;
   isUser: boolean;
   timestamp: Date;
+  citations?: Citation[];
 }
 
 export interface ChatRequest {
   message: string;
-  pdfId?: string;
+  documentId?: string;
+}
+
+export interface Citation {
+  id: number;
+  pageNumber: number | null;
+  text: string;
+  sourceLabel: string;
+}
+
+export interface Source {
+  id: number;
+  content: string;
+  similarity: number;
+  pageNumber: number | null;
+  chunkIndex: number | null;
+  metadata: any;
 }
 
 export interface ChatResponse {
   response: string;
-  sources?: string[];
+  sources?: Source[];
+  citations?: Citation[];
+  confidence?: number;
+  tokensUsed?: number;
 }
 
 // PDF Types

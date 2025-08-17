@@ -47,17 +47,19 @@ router.post('/upload', upload.single('pdf'), uploadValidation, async (req, res) 
     
     console.log(`📄 Processing PDF: ${originalname} (${(size / 1024 / 1024).toFixed(2)}MB)`);
 
-    // Process PDF and extract text
-    const extractedText = await processPDF(filePath);
-    
+    // Process PDF and extract text with page information
+    const pdfResult = await processPDF(filePath);
+
     // Create document ID
     const documentId = uuidv4();
-    
+
     // Vectorize and store in Chroma
-    const vectorResult = await vectorizeDocument(documentId, extractedText, {
+    const vectorResult = await vectorizeDocument(documentId, pdfResult.text, {
       filename: originalname,
       uploadedAt: new Date().toISOString(),
-      fileSize: size
+      fileSize: size,
+      numPages: pdfResult.numPages,
+      pdfMetadata: pdfResult.metadata
     });
 
     res.json({
@@ -67,6 +69,7 @@ router.post('/upload', upload.single('pdf'), uploadValidation, async (req, res) 
         documentId,
         filename: originalname,
         fileSize: size,
+        numPages: pdfResult.numPages,
         chunksCreated: vectorResult.chunksCreated,
         processingTime: vectorResult.processingTime
       }

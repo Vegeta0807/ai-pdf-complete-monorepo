@@ -216,3 +216,34 @@
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   }
 }
+
+// Citation Styles
+.citations-container {
+  @apply mt-3 pt-3 border-t border-white/10;
+
+  .citation-chips {
+    @apply flex flex-wrap gap-2;
+
+    .citation-chip {
+      @apply cursor-pointer transition-all duration-200 ease-out;
+      background: rgba(139, 92, 246, 0.2);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.75rem;
+
+      &:hover {
+        background: rgba(139, 92, 246, 0.3);
+        border-color: rgba(139, 92, 246, 0.5);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
+      }
+
+      mat-icon {
+        @apply text-purple-300;
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+}

@@ -22,15 +22,35 @@ export interface ChatRequest {
   documentId?: string;
 }
 
+export interface Citation {
+  id: number;
+  pageNumber: number | null;
+  text: string;
+  sourceLabel: string;
+}
+
+export interface Source {
+  id: number;
+  content: string;
+  similarity: number;
+  pageNumber: number | null;
+  chunkIndex: number | null;
+  metadata: any;
+}
+
 export interface ChatResponse {
   response: string;
-  sources?: string[];
+  sources?: Source[];
+  citations?: Citation[];
+  confidence?: number;
+  tokensUsed?: number;
 }
 
 export interface UploadResponse {
   documentId: string;
   filename: string;
   fileSize: number;
+  numPages?: number;
   chunksCreated: number;
   processingTime: number;
 }

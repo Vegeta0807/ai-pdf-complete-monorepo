@@ -21,6 +21,23 @@
         <div class="px-4 py-3 rounded-2xl relative message-bubble"
              [class]="message.isUser ? 'user-message' : 'ai-message'">
           <div class="text-body-sm leading-relaxed whitespace-pre-wrap break-words">{{ message.content }}</div>
+
+          <!-- Citations Section -->
+          <div class="citations-container mt-3" *ngIf="!message.isUser && message.citations && message.citations.length > 0">
+            <div class="text-caption opacity-70 mb-2">Sources:</div>
+            <mat-chip-set class="citation-chips">
+              <mat-chip
+                *ngFor="let citation of message.citations"
+                (click)="onCitationClick(citation)"
+                class="citation-chip"
+                [matTooltip]="citation.text"
+                matTooltipPosition="above">
+                <mat-icon matChipAvatar>description</mat-icon>
+                {{ citation.sourceLabel }}
+              </mat-chip>
+            </mat-chip-set>
+          </div>
+
           <div class="text-caption opacity-70 mt-1">
             {{ message.timestamp | date:'short' }}
           </div>

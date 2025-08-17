@@ -21,7 +21,8 @@
     "install:backend": "cd backend && npm install",
     "install:frontend": "cd frontend && npm install",
 
-    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "node scripts/start-dev.js",
+    "dev:simple": "npm run docker:up && concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm start",
 
@@ -39,6 +40,7 @@
 
     "docker:up": "cd backend && npm run docker:up",
     "docker:down": "cd backend && npm run docker:down",
+    "docker:status": "docker ps --filter name=chroma-db --format \"table {{.Names}}\\t{{.Status}}\\t{{.Ports}}\"",
 
     "lint": "npm run lint:backend && npm run lint:frontend",
     "lint:backend": "cd backend && npm run lint",
@@ -49,7 +51,7 @@
     "clean:backend": "cd backend && rm -rf node_modules package-lock.json",
     "clean:frontend": "cd frontend && rm -rf node_modules package-lock.json",
 
-    "help": "echo '🚀 AI PDF Chat - Setup Commands:' && echo '' && echo '📋 Setup Commands:' && echo '  npm run setup           - Complete setup (all steps)' && echo '  npm run setup:step1     - Install Angular CLI globally' && echo '  npm run setup:step2     - Install root dependencies' && echo '  npm run setup:step3     - Install backend dependencies' && echo '  npm run setup:step4     - Install frontend dependencies' && echo '' && echo '🔍 Verification:' && echo '  npm run setup:verify    - Verify all installations' && echo '' && echo '🧹 Cleanup:' && echo '  npm run setup:clean     - Clean all node_modules' && echo '' && echo '🚀 Development:' && echo '  npm run dev             - Start both backend and frontend' && echo '  npm run dev:backend     - Start backend only' && echo '  npm run dev:frontend    - Start frontend only'"
+    "help": "echo '🚀 AI PDF Chat - Setup Commands:' && echo '' && echo '📋 Setup Commands:' && echo '  npm run setup           - Complete setup (all steps)' && echo '  npm run setup:step1     - Install Angular CLI globally' && echo '  npm run setup:step2     - Install root dependencies' && echo '  npm run setup:step3     - Install backend dependencies' && echo '  npm run setup:step4     - Install frontend dependencies' && echo '' && echo '🔍 Verification:' && echo '  npm run setup:verify    - Verify all installations' && echo '' && echo '🧹 Cleanup:' && echo '  npm run setup:clean     - Clean all node_modules' && echo '' && echo '🚀 Development:' && echo '  npm run dev             - Smart start (checks ChromaDB + starts all)' && echo '  npm run dev:simple      - Simple start (ChromaDB + backend + frontend)' && echo '  npm run dev:backend     - Start backend only' && echo '  npm run dev:frontend    - Start frontend only' && echo '' && echo '🐳 Docker Commands:' && echo '  npm run docker:up       - Start ChromaDB' && echo '  npm run docker:down     - Stop ChromaDB' && echo '  npm run docker:status   - Check ChromaDB status'"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

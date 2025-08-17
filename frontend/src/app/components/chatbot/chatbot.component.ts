@@ -9,10 +9,20 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { trigger, state, style, transition, animate } from '@angular/animations';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, take } from 'rxjs';
 import { ApiService, ChatRequest } from '../../services/api.service';
 import { PdfStateService } from '../../services/pdf-state.service';
+import { PdfNavigationService } from '../../services/pdf-navigation.service';
+
+export interface Citation {
+  id: number;
+  pageNumber: number | null;
+  text: string;
+  sourceLabel: string;
+}
 
 export interface ChatMessage {
   id: string;
@@ -20,6 +30,7 @@ export interface ChatMessage {
   isUser: boolean;
   timestamp: Date;
   isTyping?: boolean;
+  citations?: Citation[];
 }
 
 @Component({
@@ -35,7 +46,9 @@ export interface ChatMessage {
     MatFormFieldModule,
     MatCardModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatChipsModule,
+    MatTooltipModule
   ],
   templateUrl: './chatbot.component.html',
   styleUrl: './chatbot.component.scss',
@@ -69,6 +82,7 @@ export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
   constructor(
     private apiService: ApiService,
     private pdfStateService: PdfStateService,
+    private pdfNavigationService: PdfNavigationService,
     private snackBar: MatSnackBar
   ) {}
 
@@ -178,7 +192,8 @@ export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
             id: this.generateId(),
             content: response.response,
             isUser: false,
-            timestamp: new Date()
+            timestamp: new Date(),
+            citations: response.citations || []
           };
 
           this.addMessage(aiMessage);
@@ -235,4 +250,83 @@ export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
   trackByMessageId(_: number, message: ChatMessage): string {
     return message.id;
   }
+
+  /**
+   * Navigate to a specific page when a citation is clicked
+   */
+  onCitationClick(citation: Citation): void {
+    console.log('🔗 Citation clicked:', citation);
+
+    if (citation.pageNumber && citation.pageNumber > 0) {
+      // Try to navigate
+      this.pdfNavigationService.navigateToPage(citation.pageNumber);
+
+      // Show enhanced feedback with manual navigation option
+      const snackBarRef = this.snackBar.open(
+        `📄 Reference found on page ${citation.pageNumber}. Use the page input in PDF viewer to navigate manually.`,
+        'Open in New Tab',
+        {
+          duration: 8000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom'
+        }
+      );
+
+      // Handle "Open in New Tab" action
+      snackBarRef.onAction().subscribe(() => {
+        this.openPdfInNewTab(citation.pageNumber!);
+      });
+
+      // Visual feedback - scroll to PDF viewer and highlight
+      setTimeout(() => {
+        const pdfViewer = document.querySelector('.pdf-viewer') ||
+                         document.querySelector('.pdf-content') ||
+                         document.querySelector('iframe');
+        if (pdfViewer) {
+          pdfViewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+          // Add visual highlight effect
+          const htmlElement = pdfViewer as HTMLElement;
+          htmlElement.style.border = '3px solid #8B5CF6';
+          htmlElement.style.borderRadius = '8px';
+          htmlElement.style.transition = 'all 0.3s ease';
+
+          // Remove highlight after 3 seconds
+          setTimeout(() => {
+            htmlElement.style.border = '';
+            htmlElement.style.borderRadius = '';
+          }, 3000);
+        }
+      }, 500);
+
+    } else {
+      this.snackBar.open(
+        `⚠️ Page information not available for this citation (Page: ${citation.pageNumber})`,
+        'Close',
+        { duration: 3000 }
+      );
+    }
+  }
+
+  /**
+   * Open PDF in new tab with specific page
+   */
+  private openPdfInNewTab(pageNumber: number): void {
+    // Get the current PDF blob URL from the PDF state service
+    this.pdfStateService.state$.pipe(take(1)).subscribe(state => {
+      const pdfState = state as any;
+      if (pdfState.file) {
+        const blob = new Blob([pdfState.file], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const urlWithPage = `${url}#page=${pageNumber}`;
+        window.open(urlWithPage, '_blank');
+
+        // Clean up the URL after a delay
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      }
+    });
+  }
+
 }

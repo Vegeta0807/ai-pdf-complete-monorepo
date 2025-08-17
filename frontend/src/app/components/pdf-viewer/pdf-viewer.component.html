@@ -1,85 +1,112 @@
 <div class="pdf-viewer-container h-full flex flex-col">
-  <!-- Hidden file input - always present -->
-  <input
-    type="file"
-    accept=".pdf"
-    (change)="onFileSelected($event)"
-    #fileInput
-    style="display: none"
-  />
+  <!-- Hidden file input -->
+  <input #fileInput type="file" accept=".pdf" (change)="onFileSelected($event)" style="display: none;">
 
-  <!-- Compact Toolbar -->
-  <div class="pdf-toolbar" *ngIf="isLoaded">
-    <div class="toolbar-content">
+  <!-- Upload Section -->
+  <div class="upload-section flex-1 flex items-center justify-center" *ngIf="!pdfSrc">
+    <div class="upload-area text-center p-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 transition-colors"
+         (click)="triggerFileInput()">
+      <mat-icon class="upload-icon text-6xl text-gray-400 mb-4">cloud_upload</mat-icon>
+      <h3 class="text-lg font-medium text-gray-700 mb-2">Upload PDF Document</h3>
+      <p class="text-gray-500">Click here or drag and drop your PDF file</p>
+    </div>
+  </div>
+
+  <!-- PDF Content -->
+  <div class="pdf-content h-full flex flex-col" *ngIf="pdfSrc">
+    <!-- PDF Controls Toolbar -->
+    <div class="pdf-controls bg-gray-50 border-b border-gray-200 p-3 flex items-center justify-between flex-shrink-0">
       <!-- Navigation Controls -->
-      <div class="nav-controls">
-        <button class="toolbar-btn" (click)="previousPage()" [disabled]="page <= 1">
+      <div class="control-group flex items-center space-x-2">
+        <button mat-icon-button
+                class="toolbar-btn"
+                (click)="previousPage()"
+                [disabled]="currentPage <= 1"
+                matTooltip="Previous page">
           <mat-icon>chevron_left</mat-icon>
         </button>
-        <span class="page-info">{{ page }} / {{ totalPages }}</span>
-        <button class="toolbar-btn" (click)="nextPage()" [disabled]="page >= totalPages">
+
+        <div class="flex items-center space-x-2">
+          <input
+            type="number"
+            [(ngModel)]="currentPage"
+            min="1"
+            [max]="totalPages"
+            class="w-16 text-center px-2 py-1 border border-gray-300 rounded text-sm">
+          <span class="text-sm text-gray-600">/ {{ totalPages }}</span>
+        </div>
+
+        <button mat-icon-button
+                class="toolbar-btn"
+                (click)="nextPage()"
+                [disabled]="currentPage >= totalPages"
+                matTooltip="Next page">
           <mat-icon>chevron_right</mat-icon>
         </button>
       </div>
 
       <!-- Zoom Controls -->
-      <div class="zoom-controls">
-        <button class="toolbar-btn" (click)="zoomOut()" [disabled]="zoom <= 0.5">
+      <div class="control-group flex items-center space-x-2">
+        <button mat-icon-button
+                class="toolbar-btn"
+                (click)="zoomOut()"
+                matTooltip="Zoom out">
           <mat-icon>zoom_out</mat-icon>
         </button>
-        <span class="zoom-info">{{ (zoom * 100) | number:'1.0-0' }}%</span>
-        <button class="toolbar-btn" (click)="zoomIn()" [disabled]="zoom >= 3.0">
+        <span class="text-sm text-gray-600 min-w-12 text-center">{{ (zoom * 100) | number:'1.0-0' }}%</span>
+        <button mat-icon-button
+                class="toolbar-btn"
+                (click)="zoomIn()"
+                matTooltip="Zoom in">
           <mat-icon>zoom_in</mat-icon>
         </button>
       </div>
 
-      <!-- Actions -->
-      <div class="toolbar-actions">
-        <button class="toolbar-btn" (click)="triggerFileInput()" matTooltip="Upload new PDF">
+      <!-- Action Controls -->
+      <div class="control-group flex items-center space-x-2">
+        <button mat-icon-button
+                class="toolbar-btn"
+                (click)="triggerFileInput()"
+                matTooltip="Upload new PDF">
           <mat-icon>upload_file</mat-icon>
-        </button>
-        <button class="toolbar-btn" (click)="downloadPdf()" *ngIf="selectedFile" matTooltip="Download PDF">
-          <mat-icon>download</mat-icon>
         </button>
       </div>
     </div>
-  </div>
 
-  <!-- PDF Content -->
-  <div class="pdf-content">
     <!-- Error Display -->
-    <div class="error-state" *ngIf="error">
-      <mat-icon>error_outline</mat-icon>
-      <p>{{ error }}</p>
-      <button class="retry-btn" (click)="triggerFileInput()">
-        <mat-icon>refresh</mat-icon>
-        Try Again
+    <div class="error-message bg-red-50 border border-red-200 rounded-lg p-4 m-4 flex items-center space-x-2" *ngIf="error">
+      <mat-icon class="text-red-500">error</mat-icon>
+      <span class="text-red-700">{{ error }}</span>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="loading-container flex-1 flex flex-col items-center justify-center" *ngIf="isLoading">
+      <mat-spinner diameter="50"></mat-spinner>
+      <p class="mt-4 text-gray-600">Loading PDF...</p>
+      <button mat-button
+              class="mt-4 text-blue-600"
+              (click)="forceStopLoading()">
+        Stop Loading & Show PDF
       </button>
     </div>
 
-    <!-- Simple PDF Display -->
-    <div class="simple-pdf-display" *ngIf="pdfSrc && !error">
-      <iframe
-        [src]="pdfBlobUrl"
-        width="100%"
-        height="600px"
-        style="border: 1px solid #ccc;">
-      </iframe>
-    </div>
-
-    <!-- Upload State -->
-    <div class="upload-state" *ngIf="!pdfSrc && !error">
-      <div class="upload-content">
-        <div class="upload-icon">
-          <mat-icon>cloud_upload</mat-icon>
-        </div>
-        <h3>No PDF loaded</h3>
-        <p>Upload a PDF to start viewing and chatting</p>
-        <button class="upload-btn" (click)="triggerFileInput()">
-          <mat-icon>upload_file</mat-icon>
-          Choose PDF File
-        </button>
-      </div>
+    <!-- PDF Viewer -->
+    <div class="pdf-display flex-1 overflow-auto"
+         *ngIf="pdfSrc && !error && !isLoading">
+      <pdf-viewer
+        #pdfViewer
+        [src]="pdfSrc"
+        [render-text]="true"
+        [original-size]="false"
+        [page]="currentPage"
+        [zoom]="zoom"
+        [show-all]="true"
+        [fit-to-page]="false"
+        (after-load-complete)="onPdfLoaded($event)"
+        (page-rendered)="onPageRendered($event)"
+        (error)="onPdfError($event)"
+        class="w-full h-full">
+      </pdf-viewer>
     </div>
   </div>
 </div>
