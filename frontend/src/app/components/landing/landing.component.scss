@@ -1,0 +1,86 @@
+// Floating shapes animation for hero section
+.floating-shapes {
+  @apply absolute inset-0 w-full h-full overflow-hidden;
+
+  .shape {
+    @apply absolute rounded-full;
+    background: rgba(255, 255, 255, 0.1);
+    animation: float 6s ease-in-out infinite;
+
+    &.shape-1 {
+      @apply w-20 h-20;
+      top: 20%;
+      left: 10%;
+      animation-delay: 0s;
+    }
+
+    &.shape-2 {
+      width: 120px;
+      height: 120px;
+      top: 60%;
+      right: 10%;
+      animation-delay: 2s;
+    }
+
+    &.shape-3 {
+      width: 60px;
+      height: 60px;
+      bottom: 20%;
+      left: 20%;
+      animation-delay: 4s;
+    }
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(180deg);
+  }
+}
+
+// Scroll-triggered animations
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(50px);
+  transition: all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+
+  &.in-view {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  // Staggered animation for grid items
+  &:nth-child(1) { transition-delay: 0.1s; }
+  &:nth-child(2) { transition-delay: 0.2s; }
+  &:nth-child(3) { transition-delay: 0.3s; }
+  &:nth-child(4) { transition-delay: 0.4s; }
+  &:nth-child(5) { transition-delay: 0.5s; }
+  &:nth-child(6) { transition-delay: 0.6s; }
+}
+
+// Custom styles without ng-deep
+.hero-section {
+  .mat-mdc-raised-button {
+    box-shadow: 0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s ease;
+
+    &:hover {
+      box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      transform: scale(1.05);
+    }
+  }
+
+  .mat-mdc-outlined-button {
+    transition: all 0.3s ease;
+    border: 2px solid white;
+    color: white;
+
+    &:hover {
+      background-color: white;
+      color: #7c3aed;
+    }
+  }
+}

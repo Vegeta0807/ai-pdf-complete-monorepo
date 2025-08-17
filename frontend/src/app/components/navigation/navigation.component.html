@@ -1,0 +1,49 @@
+<nav class="navigation-container bg-white shadow-lg border-b border-dark-200 sticky top-0 z-50">
+  <div class="container-custom">
+    <div class="flex-between py-4">
+      <!-- Logo/Brand -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-gradient-accent rounded-xl flex-center">
+          <mat-icon class="text-white text-xl">picture_as_pdf</mat-icon>
+        </div>
+        <div>
+          <h1 class="text-h3 font-bold text-dark-900 m-0">AI PDF Assistant</h1>
+          <p class="text-caption text-muted m-0">Intelligent Document Interaction</p>
+        </div>
+      </div>
+
+      <!-- Desktop Navigation -->
+      <div class="hidden md:flex items-center gap-2">
+        <button
+          *ngFor="let item of navigationItems"
+          mat-button
+          [class]="isActiveRoute(item.route) ? 'nav-button-active' : 'nav-button'"
+          (click)="navigateTo(item.route)"
+          [matTooltip]="item.description">
+          <mat-icon class="mr-2">{{ item.icon }}</mat-icon>
+          {{ item.label }}
+        </button>
+      </div>
+
+      <!-- Mobile Navigation Menu -->
+      <div class="md:hidden">
+        <button mat-icon-button [matMenuTriggerFor]="mobileMenu">
+          <mat-icon>menu</mat-icon>
+        </button>
+        <mat-menu #mobileMenu="matMenu" class="mobile-nav-menu">
+          <button
+            *ngFor="let item of navigationItems"
+            mat-menu-item
+            (click)="navigateTo(item.route)"
+            [class]="isActiveRoute(item.route) ? 'mobile-nav-item-active' : 'mobile-nav-item'">
+            <mat-icon class="mr-3">{{ item.icon }}</mat-icon>
+            <div>
+              <div class="text-body-sm font-medium">{{ item.label }}</div>
+              <div class="text-caption text-muted">{{ item.description }}</div>
+            </div>
+          </button>
+        </mat-menu>
+      </div>
+    </div>
+  </div>
+</nav>

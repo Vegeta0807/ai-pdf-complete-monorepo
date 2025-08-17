@@ -1,0 +1,118 @@
+<!-- Hero Section -->
+<section class="hero-section min-h-screen flex-center text-white relative overflow-hidden bg-gradient-primary">
+  <!-- Background Animation -->
+  <div class="absolute inset-0 opacity-20">
+    <div class="floating-shapes">
+      <div class="shape shape-1"></div>
+      <div class="shape shape-2"></div>
+      <div class="shape shape-3"></div>
+    </div>
+  </div>
+
+  <div class="container-custom flex-col-center text-center relative z-10" [@fadeInUp]>
+    <h1 class="text-hero font-bold mb-6 text-gradient">
+      AI PDF Assistant
+    </h1>
+    <p class="text-body-lg mb-8 text-dark-200 max-w-3xl text-center">
+      Transform your PDF experience with intelligent document viewing and AI-powered conversations.
+      Upload, view, and chat with your documents like never before.
+    </p>
+
+    <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+      <button mat-raised-button class="btn-primary" routerLink="/upload">
+        <mat-icon class="mr-2">upload_file</mat-icon>
+        Get Started
+      </button>
+      <button mat-stroked-button class="btn-outline" routerLink="/upload">
+        <mat-icon class="mr-2">chat</mat-icon>
+        Try AI Chat
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- Features Section -->
+<section class="section-padding bg-dark-50">
+  <div class="container-custom">
+    <div class="flex-col-center text-center mb-16 animate-on-scroll">
+      <h2 class="text-display font-bold text-dark-900 mb-4">
+        Powerful Features
+      </h2>
+      <p class="text-body-lg text-muted max-w-2xl text-center">
+        Experience the future of document interaction with our cutting-edge AI technology
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div class="card p-6 text-center hover-lift hover-glow group animate-on-scroll"
+           *ngFor="let feature of features; let i = index"
+           [style.transition-delay]="(i * 0.1 + 0.2) + 's'">
+        <div class="flex-center mb-6">
+          <div class="w-16 h-16 bg-gradient-accent rounded-2xl flex-center group-hover:shadow-lg transition-all duration-300">
+            <mat-icon class="text-3xl text-white">{{ feature.icon }}</mat-icon>
+          </div>
+        </div>
+        <h3 class="text-h3 font-semibold text-dark-800 mb-3">{{ feature.title }}</h3>
+        <p class="text-body text-muted">{{ feature.description }}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works Section -->
+<section class="section-padding bg-white">
+  <div class="container-custom">
+    <div class="flex-col-center text-center mb-16 animate-on-scroll">
+      <h2 class="text-display font-bold text-dark-900 mb-4">
+        How It Works
+      </h2>
+      <p class="text-body-lg text-muted max-w-2xl text-center">
+        Simple steps to unlock the power of AI-assisted document interaction
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div class="flex-col-center text-center hover-lift animate-on-scroll" style="transition-delay: 0.1s;">
+        <div class="w-16 h-16 bg-gradient-accent rounded-full flex-center text-white text-2xl font-bold mb-6 hover-glow">
+          1
+        </div>
+        <h3 class="text-h3 font-semibold text-dark-800 mb-3">Upload Your PDF</h3>
+        <p class="text-body text-muted">Simply drag and drop or select your PDF document to get started</p>
+      </div>
+
+      <div class="flex-col-center text-center hover-lift animate-on-scroll" style="transition-delay: 0.2s;">
+        <div class="w-16 h-16 bg-gradient-accent rounded-full flex-center text-white text-2xl font-bold mb-6 hover-glow">
+          2
+        </div>
+        <h3 class="text-h3 font-semibold text-dark-800 mb-3">View & Navigate</h3>
+        <p class="text-body text-muted">Use our advanced PDF viewer with zoom, search, and navigation tools</p>
+      </div>
+
+      <div class="flex-col-center text-center hover-lift animate-on-scroll" style="transition-delay: 0.3s;">
+        <div class="w-16 h-16 bg-gradient-accent rounded-full flex-center text-white text-2xl font-bold mb-6 hover-glow">
+          3
+        </div>
+        <h3 class="text-h3 font-semibold text-dark-800 mb-3">Chat with AI</h3>
+        <p class="text-body text-muted">Ask questions about your document and get intelligent responses</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA Section -->
+<section class="section-padding bg-gradient-primary text-white">
+  <div class="container-custom flex-col-center text-center animate-on-scroll">
+    <h2 class="text-display font-bold text-white mb-6">
+      Ready to Transform Your PDF Experience?
+    </h2>
+    <p class="text-body-lg mb-8 max-w-2xl text-center text-dark-200">
+      Join thousands of users who are already experiencing the future of document interaction
+    </p>
+    <button mat-raised-button
+            class="bg-white text-primary-600 px-8 py-3 text-lg font-semibold rounded-2xl hover:bg-dark-50 hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            routerLink="/upload">
+      <mat-icon class="mr-2">rocket_launch</mat-icon>
+      Start Now - It's Free
+    </button>
+  </div>
+</section>

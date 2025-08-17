@@ -1,0 +1,84 @@
+<div class="chatbot-container">
+  <!-- Minimal Chat Header -->
+  <div class="chat-header-minimal" *ngIf="messages.length > 0">
+    <button class="clear-btn" (click)="clearChat()" matTooltip="Clear chat">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+
+  <!-- Chat Messages -->
+  <div class="flex-1 overflow-y-auto p-5 flex flex-col gap-4" #chatContainer>
+    <div
+      *ngFor="let message of messages; trackBy: trackByMessageId"
+      class="flex animate-slide-up"
+      [class.justify-end]="message.isUser"
+      [class.justify-start]="!message.isUser"
+      [@messageSlide]>
+
+      <div class="flex items-end max-w-[70%]"
+           [class.flex-row-reverse]="message.isUser"
+           [class.flex-row]="!message.isUser">
+        <div class="px-4 py-3 rounded-2xl relative message-bubble"
+             [class]="message.isUser ? 'user-message' : 'ai-message'">
+          <div class="text-body-sm leading-relaxed whitespace-pre-wrap break-words">{{ message.content }}</div>
+          <div class="text-caption opacity-70 mt-1">
+            {{ message.timestamp | date:'short' }}
+          </div>
+        </div>
+        <div class="w-8 h-8 rounded-full bg-gradient-accent flex-center flex-shrink-0" *ngIf="!message.isUser">
+          <mat-icon class="text-white text-lg">smart_toy</mat-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Typing Indicator -->
+    <div
+      class="flex justify-start animate-fade-in"
+      *ngIf="isTyping"
+      [@typingIndicator]="isTyping ? 'typing' : 'idle'">
+      <div class="flex items-end max-w-[70%]">
+        <div class="px-5 py-4 ai-message rounded-2xl mr-3">
+          <div class="flex gap-1">
+            <span class="w-2 h-2 bg-primary-500 rounded-full animate-bounce" style="animation-delay: 0s;"></span>
+            <span class="w-2 h-2 bg-primary-500 rounded-full animate-bounce" style="animation-delay: 0.2s;"></span>
+            <span class="w-2 h-2 bg-primary-500 rounded-full animate-bounce" style="animation-delay: 0.4s;"></span>
+          </div>
+        </div>
+        <div class="w-8 h-8 rounded-full bg-gradient-accent flex-center flex-shrink-0">
+          <mat-icon class="text-white text-lg">smart_toy</mat-icon>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Input -->
+  <div class="chat-input-container">
+    <div class="input-field">
+      <div class="input-content">
+        <textarea
+          [(ngModel)]="currentMessage"
+          (keydown)="onKeyPress($event)"
+          [disabled]="isLoading"
+          placeholder="Ask a question about your document..."
+          class="message-input"
+          rows="1"
+          #messageInput></textarea>
+
+        <div class="input-actions">
+          <button
+            type="button"
+            (click)="sendMessage()"
+            [disabled]="!currentMessage.trim() || isLoading"
+            class="send-button"
+            [class.loading]="isLoading">
+            <svg *ngIf="!isLoading" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22,2 15,22 11,13 2,9"></polygon>
+            </svg>
+            <div *ngIf="isLoading" class="loading-spinner"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

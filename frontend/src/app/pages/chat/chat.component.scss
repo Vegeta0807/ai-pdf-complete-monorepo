@@ -1,0 +1,114 @@
+.simple-chat-layout {
+  @apply h-screen flex flex-col relative overflow-hidden;
+  background: var(--gradient-primary);
+
+  &::before {
+    content: '';
+    @apply absolute inset-0 pointer-events-none;
+    background:
+      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.1) 0%, transparent 50%);
+  }
+}
+
+.chat-header {
+  @apply bg-white/10 backdrop-blur-xl border-b border-white/20
+         px-8 py-6 shadow-dark relative z-10;
+}
+
+.document-info {
+  @apply flex items-center gap-4;
+}
+
+.document-icon {
+  @apply w-12 h-12 rounded-xl flex items-center justify-center text-white;
+  background: var(--gradient-accent);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.document-details {
+  h1 {
+    @apply text-xl font-semibold text-white m-0 mb-1;
+  }
+
+  p {
+    @apply text-sm text-white/70 m-0;
+  }
+}
+
+.main-content {
+  @apply flex-1 flex overflow-hidden relative z-[5] gap-0;
+}
+
+.chat-section {
+  @apply flex-1 flex flex-col bg-white/5 backdrop-blur-xl
+         border border-white/10 rounded-l-3xl
+         ml-5 my-5 overflow-hidden;
+}
+
+.pdf-section {
+  @apply flex-[1.5] bg-white/5 backdrop-blur-xl
+         border border-white/10 rounded-r-3xl
+         mr-5 my-5 overflow-hidden;
+}
+
+.suggestions {
+  @apply px-8 py-6 border-b border-white/10 bg-white/[0.02];
+}
+
+.suggestions-intro {
+  @apply mb-4;
+
+  p {
+    @apply text-white/80 text-sm m-0 font-medium;
+  }
+}
+
+.suggestion-item {
+  @apply flex items-start gap-2 mb-2 text-sm text-purple-500;
+
+  &:last-child {
+    @apply mb-0;
+  }
+}
+
+.bullet {
+  @apply text-purple-500 font-bold mt-0.5;
+}
+
+.chat-container {
+  @apply flex-1 overflow-hidden;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    @apply flex-col;
+  }
+
+  .chat-section {
+    @apply border-r-0 border-b border-slate-200;
+  }
+
+  .chat-header {
+    @apply p-4;
+  }
+
+  .document-details {
+    h1 {
+      @apply text-lg;
+    }
+
+    p {
+      @apply text-xs;
+    }
+  }
+
+  .document-icon {
+    @apply w-10 h-10;
+  }
+
+  .suggestions {
+    @apply p-4;
+  }
+}

@@ -1,0 +1,65 @@
+.navigation-container {
+  .nav-button {
+    @apply text-dark-600 rounded-xl px-4 py-2 transition-all duration-300 ease-out;
+
+    &:hover {
+      @apply bg-primary-50 text-primary-600;
+    }
+  }
+
+  .nav-button-active {
+    @apply text-white rounded-xl px-4 py-2;
+    background: var(--gradient-accent);
+
+    &:hover {
+      background: var(--gradient-accent);
+      @apply text-white;
+    }
+  }
+
+  .mobile-nav-item {
+    @apply py-3 px-4;
+
+    &:hover {
+      @apply bg-primary-50;
+    }
+  }
+
+  .mobile-nav-item-active {
+    @apply bg-primary-100 text-primary-700;
+  }
+
+  // Material Design overrides
+  .mat-mdc-button {
+    &.nav-button,
+    &.nav-button-active {
+      min-width: auto;
+
+      .mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+  }
+
+  .mat-mdc-icon-button {
+    color: var(--color-dark-600);
+
+    &:hover {
+      background-color: var(--color-primary-50);
+      color: var(--color-primary-600);
+    }
+  }
+}
+
+// Mobile menu styling
+.mobile-nav-menu {
+  .mat-mdc-menu-item {
+    min-height: 60px;
+
+    .mat-icon {
+      color: var(--color-primary-600);
+    }
+  }
+}

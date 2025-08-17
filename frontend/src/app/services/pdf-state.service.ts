@@ -1,0 +1,124 @@
+import { Injectable } from '@angular/core';
+import { BehaviorSubject, Observable, throwError } from 'rxjs';
+import { tap, catchError, map } from 'rxjs/operators';
+import { ApiService, UploadResponse } from './api.service';
+
+export interface PdfState {
+  file: File | null;
+  pdfId: string | null;
+  filename: string | null;
+  pages: number | null;
+  isUploading: boolean;
+  isUploaded: boolean;
+  uploadError: string | null;
+}
+
+@Injectable({ providedIn: 'root' })
+export class PdfStateService {
+  private initialState: PdfState = {
+    file: null,
+    pdfId: null,
+    filename: null,
+    pages: null,
+    isUploading: false,
+    isUploaded: false,
+    uploadError: null
+  };
+
+  private stateSubject = new BehaviorSubject<PdfState>(this.initialState);
+
+  constructor(private apiService: ApiService) {}
+
+  get state$(): Observable<PdfState> {
+    return this.stateSubject.asObservable();
+  }
+
+  get currentState(): PdfState {
+    return this.stateSubject.value;
+  }
+
+  // Legacy getters for backward compatibility
+  get file(): File | null {
+    return this.currentState.file;
+  }
+
+  get file$(): Observable<File | null> {
+    return this.stateSubject.pipe(
+      map(state => state.file)
+    );
+  }
+
+  get pdfId(): string | null {
+    return this.currentState.pdfId;
+  }
+
+  get isUploaded(): boolean {
+    return this.currentState.isUploaded;
+  }
+
+  /**
+   * Upload PDF file to backend
+   */
+  uploadPdf(file: File): Observable<UploadResponse> {
+    console.log('PDF State Service: Starting upload for', file.name); // Debug log
+    this.updateState({
+      file,
+      filename: file.name,
+      isUploading: true,
+      uploadError: null,
+      isUploaded: false
+    });
+
+    return this.apiService.uploadPdf(file).pipe(
+      tap(response => {
+        console.log('PDF State Service: Upload successful, updating state with documentId:', response.documentId); // Debug log
+        this.updateState({
+          pdfId: response.documentId, // Map documentId to pdfId for internal use
+          pages: response.chunksCreated, // Use chunksCreated as pages equivalent
+          isUploading: false,
+          isUploaded: true,
+          uploadError: null
+        });
+        console.log('PDF State Service: New state:', this.currentState); // Debug log
+      }),
+      catchError(error => {
+        console.error('PDF State Service: Upload failed:', error); // Debug log
+        this.updateState({
+          isUploading: false,
+          isUploaded: false,
+          uploadError: error.message
+        });
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Set file without uploading (for preview)
+   */
+  setFile(file: File | null): void {
+    this.updateState({
+      file,
+      filename: file?.name || null,
+      pdfId: null,
+      pages: null,
+      isUploaded: false,
+      uploadError: null
+    });
+  }
+
+  /**
+   * Clear all PDF state
+   */
+  clearPdf(): void {
+    this.stateSubject.next(this.initialState);
+  }
+
+  /**
+   * Update state partially
+   */
+  private updateState(partialState: Partial<PdfState>): void {
+    const currentState = this.stateSubject.value;
+    this.stateSubject.next({ ...currentState, ...partialState });
+  }
+}

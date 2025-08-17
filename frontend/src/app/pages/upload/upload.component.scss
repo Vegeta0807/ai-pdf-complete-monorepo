@@ -1,0 +1,92 @@
+.upload-container {
+  @apply min-h-screen flex items-center justify-center p-8 relative overflow-hidden;
+  background: var(--gradient-primary);
+
+  &::before {
+    content: '';
+    @apply absolute inset-0 pointer-events-none;
+    background:
+      radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.1) 0%, transparent 50%);
+  }
+}
+
+.upload-card {
+  @apply bg-white rounded-2xl max-w-lg w-full p-12 text-center relative z-10;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+}
+
+.upload-icon {
+  @apply text-purple-500 mb-6 flex justify-center;
+}
+
+h2 {
+  @apply text-2xl font-semibold text-gray-800 mb-2;
+}
+
+p {
+  @apply text-gray-500 mb-8;
+}
+
+.drop-zone {
+  @apply border-2 border-dashed border-gray-300 rounded-xl
+         py-12 px-8 cursor-pointer bg-gray-50
+         transition-all duration-300 ease-out;
+
+  &:hover {
+    @apply border-purple-500 bg-gray-100;
+  }
+
+  &.drag-over {
+    @apply border-purple-500 bg-purple-50 scale-105;
+  }
+}
+
+.drop-zone-content {
+  @apply flex-col-center gap-4;
+}
+
+.upload-icon-large {
+  @apply text-purple-500 opacity-60;
+}
+
+.drop-text {
+  @apply font-medium text-gray-700 m-0;
+}
+
+.file-info {
+  @apply text-sm text-gray-400 m-0;
+}
+
+.file-selected {
+  @apply mt-6 p-4 bg-green-50 rounded-lg border border-green-200;
+
+  p {
+    @apply text-green-800 m-0 mb-4 font-medium;
+  }
+}
+
+.loading-spinner {
+  @apply w-6 h-6 border-2 border-gray-200 border-t-purple-500
+         rounded-full animate-spin mx-auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .upload-container {
+    @apply p-4;
+  }
+
+  .upload-card {
+    @apply p-8;
+  }
+
+  .drop-zone {
+    @apply py-8 px-4;
+  }
+}

@@ -1,0 +1,165 @@
+<div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+  <!-- Header -->
+  <div class="w-full max-w-4xl mb-8">
+    <div class="flex items-center justify-between mb-6">
+      <button mat-icon-button routerLink="/" class="hover:bg-purple-50">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <h1 class="text-display font-bold text-gray-900">Upload PDF Document</h1>
+      <div></div> <!-- Spacer for centering -->
+    </div>
+    <p class="text-body text-gray-600 text-center max-w-2xl mx-auto">
+      Upload your PDF document to start viewing and chatting with AI about its content.
+    </p>
+  </div>
+
+  <!-- Upload Area -->
+  <div class="w-full max-w-2xl">
+    <mat-card class="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
+      <!-- Drag & Drop Area -->
+      <div
+        class="border-2 border-dashed rounded-2xl p-12 transition-all duration-300 cursor-pointer"
+        [class.border-purple-500]="pdfState.isUploading"
+        [class.bg-purple-50]="pdfState.isUploading"
+        [class.border-green-500]="pdfState.isUploaded"
+        [class.bg-green-50]="pdfState.isUploaded"
+        [class.border-gray-300]="!pdfState.isUploading && !pdfState.isUploaded"
+        (click)="triggerFileInput()">
+
+        <!-- Upload Icon -->
+        <div class="mb-6" *ngIf="!pdfState.file">
+          <mat-icon class="text-6xl text-purple-500 mb-4">cloud_upload</mat-icon>
+        </div>
+
+        <!-- Upload Text -->
+        <div class="mb-6" *ngIf="!pdfState.file">
+          <h3 class="text-2xl font-semibold text-gray-800 mb-2">
+            Click to upload your PDF
+          </h3>
+          <p class="text-lg text-gray-600 mb-4">
+            Select a PDF file to start chatting with AI
+          </p>
+          <p class="text-sm text-gray-600">
+            Supports: PDF files up to 10MB
+          </p>
+        </div>
+
+        <!-- Selected File Info -->
+        <div class="mb-6" *ngIf="pdfState.file && !pdfState.isUploading && !pdfState.isUploaded">
+          <mat-icon class="text-4xl text-blue-500 mb-2">description</mat-icon>
+          <h3 class="text-2xl font-semibold text-gray-800 mb-2">
+            File Selected
+          </h3>
+          <p class="text-lg text-gray-600 mb-2">
+            {{ pdfState.filename }}
+          </p>
+          <p class="text-sm text-gray-600">
+            {{ (pdfState.file.size / 1024 / 1024) | number:'1.1-1' }} MB
+          </p>
+        </div>
+
+        <!-- Upload Progress -->
+        <div class="mb-6" *ngIf="pdfState.isUploading">
+          <mat-spinner diameter="60" class="mx-auto mb-4"></mat-spinner>
+          <h3 class="text-2xl font-semibold text-gray-800 mb-4">
+            Uploading & Processing...
+          </h3>
+          <p class="text-sm text-gray-600">
+            Please wait while we process your PDF
+          </p>
+        </div>
+
+        <!-- Upload Success -->
+        <div class="mb-6" *ngIf="pdfState.isUploaded">
+          <mat-icon class="text-4xl text-green-500 mb-2">check_circle</mat-icon>
+          <h3 class="text-2xl font-semibold text-gray-800 mb-2">
+            Upload Successful!
+          </h3>
+          <p class="text-lg text-gray-600 mb-2">
+            {{ pdfState.filename }}
+          </p>
+          <p class="text-sm text-gray-600">
+            {{ pdfState.pages }} pages processed
+          </p>
+        </div>
+
+        <!-- Upload Error -->
+        <div class="mb-6" *ngIf="pdfState.uploadError">
+          <mat-icon class="text-4xl text-red-500 mb-2">error</mat-icon>
+          <h3 class="text-2xl font-semibold text-gray-800 mb-2">
+            Upload Failed
+          </h3>
+          <p class="text-sm text-red-600">
+            {{ pdfState.uploadError }}
+          </p>
+        </div>
+
+        <!-- Hidden File Input -->
+        <input
+          id="pdf-file-input"
+          type="file"
+          accept=".pdf"
+          (change)="onFileSelected($event)"
+          style="display: none"
+        />
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex gap-4 justify-center mt-8" *ngIf="pdfState.isUploaded">
+        <button mat-stroked-button (click)="clearPdf()" class="border-purple-500 text-purple-500 hover:bg-purple-50">
+          <mat-icon class="mr-2">refresh</mat-icon>
+          Upload Another
+        </button>
+        <button mat-raised-button routerLink="/chat" class="bg-purple-600 text-white hover:bg-purple-700">
+          <mat-icon class="mr-2">chat</mat-icon>
+          Start Chatting
+        </button>
+      </div>
+
+      <!-- Browse Button -->
+      <div class="mt-6" *ngIf="!pdfState.file && !pdfState.isUploading">
+        <button mat-raised-button (click)="triggerFileInput()" class="bg-purple-600 text-white hover:bg-purple-700">
+          <mat-icon class="mr-2">folder_open</mat-icon>
+          Browse Files
+        </button>
+      </div>
+
+      <!-- Try Again Button -->
+      <div class="mt-6" *ngIf="pdfState.uploadError">
+        <button mat-raised-button (click)="triggerFileInput()" class="bg-purple-600 text-white hover:bg-purple-700">
+          <mat-icon class="mr-2">refresh</mat-icon>
+          Try Again
+        </button>
+      </div>
+    </mat-card>
+  </div>
+
+  <!-- Features Preview -->
+  <div class="w-full max-w-4xl mt-12">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="text-center p-6">
+        <mat-icon class="text-3xl text-purple-500 mb-3">visibility</mat-icon>
+        <h4 class="text-xl font-semibold text-gray-800 mb-2">Advanced Viewer</h4>
+        <p class="text-sm text-gray-600">
+          High-quality PDF rendering with zoom, search, and navigation
+        </p>
+      </div>
+
+      <div class="text-center p-6">
+        <mat-icon class="text-3xl text-purple-500 mb-3">chat</mat-icon>
+        <h4 class="text-xl font-semibold text-gray-800 mb-2">AI Chat</h4>
+        <p class="text-sm text-gray-600">
+          Ask questions and get intelligent responses about your document
+        </p>
+      </div>
+
+      <div class="text-center p-6">
+        <mat-icon class="text-3xl text-purple-500 mb-3">search</mat-icon>
+        <h4 class="text-xl font-semibold text-gray-800 mb-2">Smart Search</h4>
+        <p class="text-sm text-gray-600">
+          Find information quickly with AI-powered search capabilities
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

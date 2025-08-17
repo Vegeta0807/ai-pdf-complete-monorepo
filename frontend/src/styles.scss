@@ -1,0 +1,190 @@
+/* You can add global styles to this file, and also import other style files */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Custom Properties for Colors */
+:root {
+  /* Black-Purple Monochromatic Palette */
+  --color-primary-50: #f8f7ff;
+  --color-primary-100: #f0edff;
+  --color-primary-200: #e1dbff;
+  --color-primary-300: #c9b9ff;
+  --color-primary-400: #a688ff;
+  --color-primary-500: #8b5cf6;
+  --color-primary-600: #7c3aed;
+  --color-primary-700: #6d28d9;
+  --color-primary-800: #5b21b6;
+  --color-primary-900: #4c1d95;
+
+  --color-dark-50: #f8f8f8;
+  --color-dark-100: #f0f0f0;
+  --color-dark-200: #e4e4e4;
+  --color-dark-300: #d1d1d1;
+  --color-dark-400: #a3a3a3;
+  --color-dark-500: #737373;
+  --color-dark-600: #525252;
+  --color-dark-700: #404040;
+  --color-dark-800: #262626;
+  --color-dark-900: #171717;
+  --color-dark-950: #0a0a0a;
+
+  /* Accent colors */
+  --color-accent-purple: #8b5cf6;
+  --color-accent-purple-dark: #6d28d9;
+  --color-accent-purple-light: #a688ff;
+  --color-accent-black: #000000;
+  --color-accent-gray-dark: #1a001a;
+  --color-accent-purple-bright: #b300b3;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, var(--color-accent-black) 0%, var(--color-accent-gray-dark) 25%, #4d004d 50%, var(--color-primary-500) 100%);
+  --gradient-secondary: linear-gradient(135deg, var(--color-dark-900) 0%, var(--color-dark-800) 25%, var(--color-dark-700) 50%, var(--color-dark-500) 100%);
+  --gradient-accent: linear-gradient(135deg, var(--color-primary-700) 0%, var(--color-primary-500) 50%, var(--color-primary-400) 100%);
+}
+
+/* Global Custom Styles */
+@layer base {
+  * {
+    border-color: var(--color-dark-200);
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    background-color: var(--color-dark-50);
+    color: var(--color-dark-900);
+    @apply font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-heading font-semibold text-dark-900;
+  }
+}
+
+@layer components {
+  /* Button Components */
+  .btn-primary {
+    background: var(--gradient-primary);
+    @apply text-white px-6 py-3 rounded-xl font-semibold
+           shadow-lg hover:shadow-xl transform hover:scale-105
+           transition-all duration-300 ease-out;
+  }
+
+  .btn-secondary {
+    background-color: var(--color-dark-800);
+    border-color: var(--color-dark-600);
+    @apply text-white px-6 py-3 rounded-xl font-semibold border
+           hover:bg-dark-700 hover:border-primary-500
+           transition-all duration-300 ease-out;
+  }
+
+  .btn-outline {
+    border-color: var(--color-primary-500);
+    color: var(--color-primary-500);
+    @apply border-2 px-6 py-3 rounded-xl font-semibold
+           hover:bg-primary-500 hover:text-white
+           transition-all duration-300 ease-out;
+  }
+
+  .btn-ghost {
+    color: var(--color-primary-500);
+    @apply px-6 py-3 rounded-xl font-semibold
+           hover:bg-primary-50 hover:text-primary-600
+           transition-all duration-300 ease-out;
+  }
+
+  /* Card Components */
+  .card {
+    @apply bg-white rounded-2xl shadow-lg border border-dark-100
+           hover:shadow-xl transition-all duration-300 ease-out;
+  }
+
+  .card-dark {
+    background-color: var(--color-dark-800);
+    border-color: var(--color-dark-700);
+    @apply text-white rounded-2xl shadow-lg border
+           hover:shadow-xl transition-all duration-300 ease-out;
+  }
+
+  .card-gradient {
+    background: var(--gradient-primary);
+    @apply text-white rounded-2xl shadow-lg
+           hover:shadow-xl transition-all duration-300 ease-out;
+  }
+
+  /* Input Components */
+  .input-primary {
+    border-color: var(--color-dark-200);
+    @apply w-full px-4 py-3 rounded-xl border
+           focus:border-primary-500 focus:ring-2 focus:ring-primary-200
+           transition-all duration-200 ease-out;
+  }
+
+  .input-dark {
+    background-color: var(--color-dark-800);
+    border-color: var(--color-dark-600);
+    @apply w-full px-4 py-3 rounded-xl border text-white
+           focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20
+           transition-all duration-200 ease-out;
+  }
+
+  /* Text Components */
+  .text-gradient {
+    background: var(--gradient-accent);
+    @apply bg-clip-text text-transparent;
+  }
+
+  .text-muted {
+    color: var(--color-dark-500);
+  }
+
+  .text-accent {
+    color: var(--color-primary-600);
+  }
+
+  /* Layout Components */
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .section-padding {
+    @apply py-16 md:py-20 lg:py-24;
+  }
+
+  /* Flex Layout Utilities */
+  .flex-center {
+    @apply flex items-center justify-center;
+  }
+
+  .flex-between {
+    @apply flex items-center justify-between;
+  }
+
+  .flex-col-center {
+    @apply flex flex-col items-center justify-center;
+  }
+
+  /* Animation Components */
+  .animate-on-scroll {
+    @apply opacity-0 translate-y-8 transition-all duration-700 ease-out;
+  }
+
+  .animate-on-scroll.in-view {
+    @apply opacity-100 translate-y-0;
+  }
+
+  .hover-lift {
+    @apply transform hover:-translate-y-2 transition-transform duration-300 ease-out;
+  }
+
+  .hover-glow {
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+    @apply transition-shadow duration-300 ease-out;
+  }
+}
+
+html, body { height: 100%; }
+body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
