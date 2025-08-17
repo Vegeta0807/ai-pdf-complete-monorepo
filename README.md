@@ -61,10 +61,9 @@ npm install
 npm run install:all
 ```
 
-3. **Move your AngularJS project**:
+3. **Install your AngularJS project**:
 ```bash
-# Move your existing AngularJS project files into the frontend/ directory
-# The frontend/ directory is currently empty and ready for your project
+# Install your existing AngularJS project files into the frontend/ directory
 ```
 
 4. **Backend environment setup**:
@@ -84,7 +83,7 @@ npm run dev
 ```
 
 - Backend will start on `http://localhost:3000`
-- Frontend will start on `http://localhost:4200` (after you move your project)
+- Frontend will start on `http://localhost:4200` 
 
 ## 📋 Available Scripts
 
