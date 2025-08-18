@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef, NgZone } from '@angular/core';
 import { PdfStateService } from '../../services/pdf-state.service';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { PdfViewerComponent } from '../../components/pdf-viewer/pdf-viewer.component';
 import { ChatbotComponent } from '../../components/chatbot/chatbot.component';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,6 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   standalone: true,
   imports: [
     CommonModule,
+    RouterModule,
     PdfViewerComponent,
     ChatbotComponent,
     MatIconModule,
@@ -22,9 +24,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   styleUrl: './chat.component.scss'
 })
 export class ChatComponent implements OnInit, OnDestroy {
-  pdfSrc: string | Uint8Array | null = null;
+  pdfSrc: Uint8Array | null = null;
   hasUserSentMessage = false;
+  isUploadingToApi = false;
+  uploadProgress = '';
   private fileSubscription?: any;
+  private stateSubscription?: any;
 
   constructor(
     private pdfState: PdfStateService,
@@ -36,12 +41,54 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.fileSubscription = this.pdfState.file$.subscribe(file => {
       this.handleFileChange(file);
     });
+
+    // Subscribe to PDF state changes to track upload progress
+    this.stateSubscription = this.pdfState.state$.subscribe(state => {
+      this.isUploadingToApi = state.isUploading || state.isProcessing;
+
+      // Update progress message based on processing stage
+      switch (state.processingStage) {
+        case 'uploading':
+          this.uploadProgress = 'Uploading PDF to server...';
+          break;
+        case 'parsing':
+          this.uploadProgress = 'Parsing PDF content...';
+          break;
+        case 'vectorizing':
+          this.uploadProgress = 'Creating searchable index...';
+          break;
+        case 'complete':
+          this.uploadProgress = 'PDF processed successfully!';
+          // Clear progress message after a short delay
+          setTimeout(() => {
+            this.uploadProgress = '';
+          }, 2000);
+          break;
+        case 'error':
+          this.uploadProgress = `Upload failed: ${state.uploadError}`;
+          // Clear error message after a longer delay
+          setTimeout(() => {
+            this.uploadProgress = '';
+          }, 5000);
+          break;
+        default:
+          if (state.isUploading || state.isProcessing) {
+            this.uploadProgress = 'Processing PDF...';
+          }
+      }
+
+      this.cdr.detectChanges();
+    });
+
     this.handleFileChange(this.pdfState.file);
   }
 
   ngOnDestroy() {
     if (this.fileSubscription) {
       this.fileSubscription.unsubscribe();
+    }
+    if (this.stateSubscription) {
+      this.stateSubscription.unsubscribe();
     }
   }
 
@@ -67,6 +114,10 @@ export class ChatComponent implements OnInit, OnDestroy {
 
 
   getDocumentTitle(): string {
+    if (this.isUploadingToApi) {
+      return 'Processing document...';
+    }
+
     if (!this.pdfSrc && !this.pdfState.file) {
       return 'No document loaded';
     }
@@ -79,11 +130,19 @@ export class ChatComponent implements OnInit, OnDestroy {
   }
 
   getDocumentSubtitle(): string {
+    if (this.isUploadingToApi && this.uploadProgress) {
+      return this.uploadProgress;
+    }
     return '';
   }
 
   hasPdf(): boolean {
     return !!(this.pdfSrc || this.pdfState.file);
+  }
+
+  // Show toolbar upload button only after backend processing completes
+  hasUploaded(): boolean {
+    return this.pdfState.isUploaded;
   }
 
   shouldShowSuggestions(): boolean {

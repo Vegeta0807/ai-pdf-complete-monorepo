@@ -1,14 +1,35 @@
 <div class="pdf-viewer-container h-full flex flex-col">
-  <!-- Hidden file input -->
+  <!-- Hidden file input for click to upload -->
   <input #fileInput type="file" accept=".pdf" (change)="onFileSelected($event)" style="display: none;">
 
   <!-- Upload Section -->
-  <div class="upload-section flex-1 flex items-center justify-center" *ngIf="!pdfSrc">
-    <div class="upload-area text-center p-8 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 transition-colors"
-         (click)="triggerFileInput()">
-      <mat-icon class="upload-icon text-6xl text-gray-400 mb-4">cloud_upload</mat-icon>
-      <h3 class="text-lg font-medium text-gray-700 mb-2">Upload PDF Document</h3>
-      <p class="text-gray-500">Click here or drag and drop your PDF file</p>
+  <div class="upload-section flex-1 flex items-center justify-center"
+       *ngIf="!pdfSrc"
+       (dragover)="onDragOver($event)"
+       (dragleave)="onDragLeave($event)"
+       (drop)="onDrop($event)">
+    <div class="upload-area text-center p-12 border-2 border-dashed rounded-2xl transition-all duration-300 cursor-pointer"
+         (click)="triggerFileInput()"
+         (dragover)="onDragOver($event)"
+         (dragleave)="onDragLeave($event)"
+         (drop)="onDrop($event)">
+      <div class="upload-icon-container mb-6">
+        <div class="w-20 h-20 bg-gradient-accent rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+          <mat-icon class="text-4xl text-white" style="display:inline-flex;align-items:center;justify-content:center;line-height:1;">picture_as_pdf</mat-icon>
+        </div>
+      </div>
+      <h3 class="text-xl font-semibold text-white mb-3">No PDF Document Loaded</h3>
+      <p class="text-white/80 mb-4">Drag and drop your PDF here or click to upload</p>
+      <div class="upload-instructions text-sm text-white/60 mt-4">
+        <div class="flex items-center justify-center gap-2 mb-2">
+          <mat-icon class="text-base">mouse</mat-icon>
+          <span>Click to browse files</span>
+        </div>
+        <div class="flex items-center justify-center gap-2">
+          <mat-icon class="text-base">touch_app</mat-icon>
+          <span>Or drag & drop PDF files here</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -32,8 +53,8 @@
             [(ngModel)]="currentPage"
             min="1"
             [max]="totalPages"
-            class="w-16 text-center px-2 py-1 border border-gray-300 rounded text-sm">
-          <span class="text-sm text-gray-600">/ {{ totalPages }}</span>
+            class="page-input w-16 text-center px-2 py-1 rounded text-sm">
+          <span class="text-sm text-white/80">/ {{ totalPages }}</span>
         </div>
 
         <button mat-icon-button
@@ -53,7 +74,7 @@
                 matTooltip="Zoom out">
           <mat-icon>zoom_out</mat-icon>
         </button>
-        <span class="text-sm text-gray-600 min-w-12 text-center">{{ (zoom * 100) | number:'1.0-0' }}%</span>
+        <span class="text-sm text-white/80 min-w-12 text-center">{{ (zoom * 100) | number:'1.0-0' }}%</span>
         <button mat-icon-button
                 class="toolbar-btn"
                 (click)="zoomIn()"
@@ -62,14 +83,12 @@
         </button>
       </div>
 
-      <!-- Action Controls -->
+      <!-- Document Info -->
       <div class="control-group flex items-center space-x-2">
-        <button mat-icon-button
-                class="toolbar-btn"
-                (click)="triggerFileInput()"
-                matTooltip="Upload new PDF">
-          <mat-icon>upload_file</mat-icon>
-        </button>
+        <div class="document-info text-sm text-gray-600">
+          <mat-icon class="text-lg mr-1">description</mat-icon>
+          <span>PDF Document</span>
+        </div>
       </div>
     </div>
 
@@ -79,20 +98,27 @@
       <span class="text-red-700">{{ error }}</span>
     </div>
 
-    <!-- Loading Spinner -->
-    <div class="loading-container flex-1 flex flex-col items-center justify-center" *ngIf="isLoading">
-      <mat-spinner diameter="50"></mat-spinner>
-      <p class="mt-4 text-gray-600">Loading PDF...</p>
-      <button mat-button
-              class="mt-4 text-blue-600"
-              (click)="forceStopLoading()">
-        Stop Loading & Show PDF
-      </button>
+    <!-- Backend Processing State -->
+    <div class="loading-container flex-1 flex flex-col items-center justify-center" *ngIf="isProcessing">
+      <div class="loading-content text-center">
+        <div class="loading-spinner-custom mb-6">
+          <div class="spinner-ring processing"></div>
+          <div class="spinner-ring processing"></div>
+          <div class="spinner-ring processing"></div>
+        </div>
+        <h3 class="text-lg font-semibold text-white mb-2">Processing PDF Document</h3>
+        <p class="text-white/80 mb-4">Analyzing and extracting content from your document...</p>
+        <div class="processing-steps">
+          <div class="step">📄 Parsing PDF structure</div>
+          <div class="step">🔍 Extracting text content</div>
+          <div class="step">🧠 Creating searchable index</div>
+        </div>
+      </div>
     </div>
 
     <!-- PDF Viewer -->
     <div class="pdf-display flex-1 overflow-auto"
-         *ngIf="pdfSrc && !error && !isLoading">
+         *ngIf="pdfSrc && !error && !isLoading && !isProcessing">
       <pdf-viewer
         #pdfViewer
         [src]="pdfSrc"

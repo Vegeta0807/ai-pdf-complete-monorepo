@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, Output, EventEmitter, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -70,6 +70,7 @@ export interface ChatMessage {
 export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('messageInput') messageInput!: ElementRef<HTMLTextAreaElement>;
   @Output() userMessageSent = new EventEmitter<void>();
+  @Input() pdfSrc: Uint8Array | null = null;
 
   private destroy$ = new Subject<void>();
 
@@ -77,6 +78,7 @@ export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
   currentMessage = '';
   isLoading = false;
   isTyping = false;
+  isUploading = false;
   pdfId: string | null = null;
 
   constructor(
@@ -87,12 +89,20 @@ export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
   ) {}
 
   ngOnInit() {
-    // Subscribe to PDF state to get the uploaded PDF ID
+    // Subscribe to PDF state to get the uploaded PDF ID and upload status
     this.pdfStateService.state$
       .pipe(takeUntil(this.destroy$))
       .subscribe(state => {
         const previousPdfId = this.pdfId;
+        const wasUploading = this.isUploading;
+
         this.pdfId = state.pdfId;
+        this.isUploading = state.isUploading || state.isProcessing;
+
+        // Handle upload completion - only show completion message if PDF is visible
+        if (wasUploading && !state.isUploading && state.isUploaded && state.pdfId && this.pdfSrc) {
+          this.handleUploadComplete(state);
+        }
 
         // Update welcome message when PDF state changes
         if (previousPdfId !== this.pdfId) {
@@ -102,6 +112,35 @@ export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Add initial welcome message
     this.updateWelcomeMessage();
+  }
+
+  hasPdfVisible(): boolean {
+    // Check if there's a PDF already visible in the viewer
+    // This prevents showing the upload loader when PDF is already rendered
+    return !!this.pdfSrc;
+  }
+
+  private handleUploadComplete(state: any) {
+    // Add a completion message to the chat
+    const filename = state.filename || 'your document';
+    const pages = state.pages || 'multiple';
+
+    const completionMessage = `✅ Perfect! I've successfully processed "${filename}" (${pages} pages). Your document is now ready for analysis. I can help you with:
+
+• Summarizing key points and main ideas
+• Answering specific questions about the content
+• Finding relevant information quickly
+• Explaining complex concepts
+• Comparing different sections
+
+What would you like to know about your document?`;
+
+    this.addMessage({
+      id: this.generateId(),
+      content: completionMessage,
+      isUser: false,
+      timestamp: new Date()
+    });
   }
 
   private updateWelcomeMessage() {
@@ -252,6 +291,18 @@ export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   /**
+   * Generate a more informative tooltip for citations
+   */
+  getCitationTooltip(citation: Citation): string {
+    const pageInfo = citation.pageNumber ? `Page ${citation.pageNumber}` : 'Document reference';
+    const preview = citation.text.length > 100 ?
+      citation.text.substring(0, 100) + '...' :
+      citation.text;
+
+    return `${pageInfo}\n\nContent preview:\n"${preview}"\n\nClick to navigate to this section`;
+  }
+
+  /**
    * Navigate to a specific page when a citation is clicked
    */
   onCitationClick(citation: Citation): void {
@@ -261,21 +312,7 @@ export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
       // Try to navigate
       this.pdfNavigationService.navigateToPage(citation.pageNumber);
 
-      // Show enhanced feedback with manual navigation option
-      const snackBarRef = this.snackBar.open(
-        `📄 Reference found on page ${citation.pageNumber}. Use the page input in PDF viewer to navigate manually.`,
-        'Open in New Tab',
-        {
-          duration: 8000,
-          horizontalPosition: 'center',
-          verticalPosition: 'bottom'
-        }
-      );
-
-      // Handle "Open in New Tab" action
-      snackBarRef.onAction().subscribe(() => {
-        this.openPdfInNewTab(citation.pageNumber!);
-      });
+      // Removed message toaster and external link per UI requirements
 
       // Visual feedback - scroll to PDF viewer and highlight
       setTimeout(() => {
@@ -301,9 +338,9 @@ export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
 
     } else {
       this.snackBar.open(
-        `⚠️ Page information not available for this citation (Page: ${citation.pageNumber})`,
+        `📄 This reference doesn't have specific page information, but the content is from your uploaded document.`,
         'Close',
-        { duration: 3000 }
+        { duration: 4000 }
       );
     }
   }

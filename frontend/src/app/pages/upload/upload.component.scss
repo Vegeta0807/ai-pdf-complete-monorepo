@@ -44,7 +44,7 @@ p {
 }
 
 .drop-zone-content {
-  @apply flex-col-center gap-4;
+  @apply flex flex-col items-center justify-center gap-4;
 }
 
 .upload-icon-large {

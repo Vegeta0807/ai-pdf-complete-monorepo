@@ -1,5 +1,7 @@
 .chatbot-container {
   @apply h-full flex flex-col bg-transparent;
+  overflow-x: hidden;
+  max-width: 100%;
 
   .chat-header-minimal {
     @apply px-5 py-3 flex justify-end border-b border-white/10;
@@ -38,6 +40,10 @@
 
     mat-icon {
       @apply text-xl text-white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
     }
   }
 
@@ -58,6 +64,13 @@
       @apply bg-purple-500/10;
     }
   }
+}
+
+.chat-messages-container {
+  @apply w-full;
+  max-width: 100%;
+  overflow-x: hidden !important;
+  word-wrap: break-word;
 }
 
 @keyframes typing {
@@ -193,7 +206,8 @@
 }
 
 .loading-spinner {
-  @apply w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin;
+  @apply w-4 h-4 border-2 border-white/30 border-t-white rounded-full;
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
@@ -203,6 +217,9 @@
 
 .message-bubble {
   @apply max-w-[70%] break-words;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 
   &.user-message {
     @apply text-white ml-3;
@@ -230,6 +247,10 @@
       border: 1px solid rgba(139, 92, 246, 0.3);
       color: rgba(255, 255, 255, 0.9);
       font-size: 0.75rem;
+      max-width: 250px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
 
       &:hover {
         background: rgba(139, 92, 246, 0.3);
@@ -246,4 +267,139 @@
       }
     }
   }
+}
+
+// Chat Loading Overlay (for ready state)
+.chat-loading-overlay {
+  @apply absolute inset-0 flex items-center justify-center z-10;
+  background: var(--gradient-primary);
+
+  .loading-content {
+    @apply max-w-sm mx-auto px-6;
+  }
+
+  .loading-icon {
+    @apply flex justify-center;
+  }
+
+  .waiting-indicator {
+    @apply flex justify-center space-x-2;
+
+    .pulse-dot {
+      @apply w-2 h-2 bg-primary-400 rounded-full;
+      animation: pulse-wave 1.5s ease-in-out infinite;
+
+      &:nth-child(1) { animation-delay: 0s; }
+      &:nth-child(2) { animation-delay: 0.3s; }
+      &:nth-child(3) { animation-delay: 0.6s; }
+    }
+  }
+}
+
+// Upload Processing Message
+.upload-message {
+  @apply px-4 py-3;
+  min-width: 200px;
+}
+
+.upload-icon {
+  @apply w-10 h-10 rounded-full flex items-center justify-center;
+  background-color: rgba(139, 92, 246, 0.2);
+  animation: upload-pulse 2s ease-in-out infinite;
+
+  mat-icon {
+    @apply text-primary-400 text-xl;
+  }
+}
+
+.upload-text {
+  .upload-title {
+    @apply text-sm font-medium text-white/90;
+  }
+
+  .upload-subtitle {
+    @apply text-xs text-white/60 mt-0.5;
+  }
+}
+
+@keyframes pulse-wave {
+  0%, 60%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  30% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+@keyframes upload-pulse {
+  0%, 100% {
+    transform: scale(1);
+    background-color: rgba(139, 92, 246, 0.15);
+  }
+  50% {
+    transform: scale(1.05);
+    background-color: rgba(139, 92, 246, 0.25);
+  }
+}
+
+@keyframes upload-pulse {
+  0%, 100% {
+    transform: scale(1);
+    background-color: rgba(139, 92, 246, 0.15);
+  }
+  50% {
+    transform: scale(1.05);
+    background-color: rgba(139, 92, 246, 0.25);
+  }
+}
+
+// Enhanced tooltip styling for citations
+::ng-deep .citation-tooltip {
+  background: rgba(30, 30, 30, 0.95) !important;
+  color: white !important;
+
+/* Force absolute centering for circular icons (chatbot avatar, upload status) */
+.bg-gradient-accent {
+  position: relative;
+}
+.bg-gradient-accent mat-icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+}
+
+.upload-icon {
+  position: relative;
+}
+.upload-icon mat-icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+}
+
+  font-size: 0.8rem !important;
+  max-width: 300px !important;
+  white-space: pre-line !important;
+  line-height: 1.4 !important;
+
+/* Center mat-icon glyphs inside circular/gradient containers */
+:host ::ng-deep .bg-gradient-accent mat-icon,
+:host ::ng-deep .upload-icon mat-icon,
+:host ::ng-deep .clear-btn mat-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+}
+
+  padding: 12px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
 }

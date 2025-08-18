@@ -49,13 +49,36 @@ router.post('/message', chatValidation, async (req, res) => {
           // Validate page number
           const validPageNumber = (pageNumber && pageNumber >= 1 && pageNumber <= totalPages) ? pageNumber : null;
 
+          // Create a more descriptive label
+          const generateSourceLabel = (pageNum, content, index) => {
+            if (pageNum) {
+              // Extract first few words for context
+              const firstWords = content.trim().split(/\s+/).slice(0, 4).join(' ');
+              const cleanWords = firstWords.replace(/[^\w\s]/g, '').trim();
+
+              if (cleanWords.length > 0) {
+                return `Page ${pageNum}: "${cleanWords}..."`;
+              } else {
+                return `Page ${pageNum}`;
+              }
+            } else {
+              // Fallback for chunks without page numbers
+              const firstWords = content.trim().split(/\s+/).slice(0, 3).join(' ');
+              const cleanWords = firstWords.replace(/[^\w\s]/g, '').trim();
+
+              if (cleanWords.length > 0) {
+                return `"${cleanWords}..."`;
+              } else {
+                return `Reference ${index + 1}`;
+              }
+            }
+          };
+
           return {
             id: index + 1,
             pageNumber: validPageNumber,
-            text: chunk.content.substring(0, 100) + '...',
-            sourceLabel: validPageNumber
-              ? `Source ${index + 1} (Page ${validPageNumber})`
-              : `Source ${index + 1}`
+            text: chunk.content.substring(0, 150) + '...',
+            sourceLabel: generateSourceLabel(validPageNumber, chunk.content, index)
           };
         }),
         confidence: aiResponse.confidence,

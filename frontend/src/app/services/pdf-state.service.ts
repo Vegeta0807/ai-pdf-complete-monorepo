@@ -9,8 +9,10 @@ export interface PdfState {
   filename: string | null;
   pages: number | null;
   isUploading: boolean;
+  isProcessing: boolean; // Backend processing (parsing, vectorization)
   isUploaded: boolean;
   uploadError: string | null;
+  processingStage: 'idle' | 'uploading' | 'parsing' | 'vectorizing' | 'complete' | 'error';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -21,8 +23,10 @@ export class PdfStateService {
     filename: null,
     pages: null,
     isUploading: false,
+    isProcessing: false,
     isUploaded: false,
-    uploadError: null
+    uploadError: null,
+    processingStage: 'idle'
   };
 
   private stateSubject = new BehaviorSubject<PdfState>(this.initialState);
@@ -56,6 +60,18 @@ export class PdfStateService {
     return this.currentState.isUploaded;
   }
 
+  get isProcessing(): boolean {
+    return this.currentState.isProcessing;
+  }
+
+  get processingStage(): string {
+    return this.currentState.processingStage;
+  }
+
+  get isInProgress(): boolean {
+    return this.currentState.isUploading || this.currentState.isProcessing;
+  }
+
   /**
    * Upload PDF file to backend
    */
@@ -65,8 +81,10 @@ export class PdfStateService {
       file,
       filename: file.name,
       isUploading: true,
+      isProcessing: true,
       uploadError: null,
-      isUploaded: false
+      isUploaded: false,
+      processingStage: 'uploading'
     });
 
     return this.apiService.uploadPdf(file).pipe(
@@ -76,8 +94,10 @@ export class PdfStateService {
           pdfId: response.documentId, // Map documentId to pdfId for internal use
           pages: response.numPages || response.chunksCreated, // Use numPages from backend, fallback to chunksCreated
           isUploading: false,
+          isProcessing: false,
           isUploaded: true,
-          uploadError: null
+          uploadError: null,
+          processingStage: 'complete'
         });
         console.log('PDF State Service: New state:', this.currentState); // Debug log
       }),
@@ -85,8 +105,10 @@ export class PdfStateService {
         console.error('PDF State Service: Upload failed:', error); // Debug log
         this.updateState({
           isUploading: false,
+          isProcessing: false,
           isUploaded: false,
-          uploadError: error.message
+          uploadError: error.message,
+          processingStage: 'error'
         });
         return throwError(() => error);
       })
@@ -103,7 +125,9 @@ export class PdfStateService {
       pdfId: null,
       pages: null,
       isUploaded: false,
-      uploadError: null
+      isProcessing: false,
+      uploadError: null,
+      processingStage: file ? 'idle' : 'idle'
     });
   }
 

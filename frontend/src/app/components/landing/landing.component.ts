@@ -5,6 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { RouterModule } from '@angular/router';
 import { trigger, state, style, transition, animate, query, stagger } from '@angular/animations';
+import { PdfStateService } from '../../services/pdf-state.service';
+import { PdfNavigationService } from '../../services/pdf-navigation.service';
 
 @Component({
   selector: 'app-landing',
@@ -63,9 +65,13 @@ export class LandingComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   ];
 
-  constructor(private elementRef: ElementRef) {}
+  constructor(private elementRef: ElementRef, private pdfState: PdfStateService, private pdfNav: PdfNavigationService) {}
 
   ngOnInit() {
+    // Clear all relevant app states when landing page loads
+    this.pdfState.clearPdf();
+    this.pdfNav.setTotalPages(1);
+
     this.observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {

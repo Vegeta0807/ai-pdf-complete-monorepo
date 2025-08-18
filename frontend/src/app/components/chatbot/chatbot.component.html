@@ -1,4 +1,24 @@
 <div class="chatbot-container">
+
+
+  <!-- Ready to Chat Overlay -->
+  <div class="chat-loading-overlay" *ngIf="!pdfId && !isUploading && messages.length === 0">
+    <div class="loading-content text-center">
+      <div class="loading-icon mb-4">
+        <div class="w-16 h-16 bg-gradient-accent rounded-2xl flex items-center justify-center mx-auto">
+          <mat-icon class="text-3xl text-white">chat</mat-icon>
+        </div>
+      </div>
+      <h3 class="text-lg font-semibold text-white mb-2">Ready to Chat</h3>
+      <p class="text-white/80 mb-4">Upload a PDF document to start an intelligent conversation about your content</p>
+      <div class="waiting-indicator">
+        <div class="pulse-dot"></div>
+        <div class="pulse-dot"></div>
+        <div class="pulse-dot"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Minimal Chat Header -->
   <div class="chat-header-minimal" *ngIf="messages.length > 0">
     <button class="clear-btn" (click)="clearChat()" matTooltip="Clear chat">
@@ -7,7 +27,7 @@
   </div>
 
   <!-- Chat Messages -->
-  <div class="flex-1 overflow-y-auto p-5 flex flex-col gap-4" #chatContainer>
+  <div class="chat-messages-container flex-1 overflow-y-auto overflow-x-hidden p-5 flex flex-col gap-4" #chatContainer>
     <div
       *ngFor="let message of messages; trackBy: trackByMessageId"
       class="flex animate-slide-up"
@@ -24,15 +44,16 @@
 
           <!-- Citations Section -->
           <div class="citations-container mt-3" *ngIf="!message.isUser && message.citations && message.citations.length > 0">
-            <div class="text-caption opacity-70 mb-2">Sources:</div>
+            <div class="text-caption opacity-70 mb-2">Referenced from document:</div>
             <mat-chip-set class="citation-chips">
               <mat-chip
-                *ngFor="let citation of message.citations"
+                *ngFor="let citation of message.citations; let i = index"
                 (click)="onCitationClick(citation)"
                 class="citation-chip"
-                [matTooltip]="citation.text"
-                matTooltipPosition="above">
-                <mat-icon matChipAvatar>description</mat-icon>
+                [matTooltip]="getCitationTooltip(citation)"
+                matTooltipPosition="above"
+                matTooltipClass="citation-tooltip">
+                <mat-icon matChipAvatar>{{ citation.pageNumber ? 'article' : 'description' }}</mat-icon>
                 {{ citation.sourceLabel }}
               </mat-chip>
             </mat-chip-set>
@@ -44,6 +65,26 @@
         </div>
         <div class="w-8 h-8 rounded-full bg-gradient-accent flex-center flex-shrink-0" *ngIf="!message.isUser">
           <mat-icon class="text-white text-lg">smart_toy</mat-icon>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Processing Message (show during upload/processing regardless of PDF render state) -->
+    <div class="flex justify-start" *ngIf="isUploading">
+      <div class="flex items-end max-w-[80%]">
+        <div class="upload-message ai-message rounded-2xl mr-3">
+          <div class="flex items-center gap-3">
+            <div class="upload-icon">
+              <mat-icon>cloud_upload</mat-icon>
+            </div>
+            <div class="upload-text">
+              <div class="upload-title">Processing PDF</div>
+              <div class="upload-subtitle">Analyzing document content...</div>
+            </div>
+          </div>
+        </div>
+        <div class="w-8 h-8 rounded-full bg-gradient-accent flex-center flex-shrink-0">
+          <mat-icon class="text-white text-lg" style="display:inline-flex;align-items:center;justify-content:center;line-height:1;">smart_toy</mat-icon>
         </div>
       </div>
     </div>

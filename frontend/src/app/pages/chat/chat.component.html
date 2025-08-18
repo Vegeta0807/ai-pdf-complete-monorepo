@@ -3,7 +3,17 @@
   <div class="chat-header">
     <div class="document-info">
       <div class="document-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Show loading spinner when uploading -->
+        <div *ngIf="isUploadingToApi" class="upload-spinner">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="animate-spin">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="31.416" stroke-dashoffset="31.416">
+              <animate attributeName="stroke-dasharray" dur="2s" values="0 31.416;15.708 15.708;0 31.416;0 31.416" repeatCount="indefinite"/>
+              <animate attributeName="stroke-dashoffset" dur="2s" values="0;-15.708;-31.416;-31.416" repeatCount="indefinite"/>
+            </circle>
+          </svg>
+        </div>
+        <!-- Show document icon when not uploading -->
+        <svg *ngIf="!isUploadingToApi" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">
           <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.89 22 5.99 22H18C19.1 22 20 21.1 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           <polyline points="14,2 14,8 20,8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
@@ -12,6 +22,17 @@
         <h1>{{ getDocumentTitle() }}</h1>
         <p *ngIf="getDocumentSubtitle()">{{ getDocumentSubtitle() }}</p>
       </div>
+    </div>
+
+    <!-- Upload PDF Button (shown only after backend processing completes) -->
+    <div class="header-actions" *ngIf="hasUploaded()">
+      <button mat-raised-button
+              class="upload-pdf-btn"
+              routerLink="/upload"
+              matTooltip="Upload a different PDF">
+        <mat-icon class="mr-2">upload_file</mat-icon>
+        Upload PDF
+      </button>
     </div>
   </div>
 
@@ -34,7 +55,7 @@
 
       <!-- Chat Container -->
       <div class="chat-container">
-        <app-chatbot (userMessageSent)="onUserMessageSent()"></app-chatbot>
+        <app-chatbot [pdfSrc]="pdfSrc" (userMessageSent)="onUserMessageSent()"></app-chatbot>
       </div>
     </div>
 
