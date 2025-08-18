@@ -47,6 +47,20 @@
 }
 
 .upload-icon-container {
+/* Flex-center the gradient square icon container */
+.upload-icon-container .bg-gradient-accent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-icon-container .bg-gradient-accent mat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
   @apply flex justify-center transition-transform duration-300;
 }
 

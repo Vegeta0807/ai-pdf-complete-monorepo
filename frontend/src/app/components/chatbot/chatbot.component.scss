@@ -359,47 +359,32 @@
 ::ng-deep .citation-tooltip {
   background: rgba(30, 30, 30, 0.95) !important;
   color: white !important;
-
-/* Force absolute centering for circular icons (chatbot avatar, upload status) */
-.bg-gradient-accent {
-  position: relative;
-}
-.bg-gradient-accent mat-icon {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  margin: 0;
-}
-
-.upload-icon {
-  position: relative;
-}
-.upload-icon mat-icon {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  margin: 0;
-}
-
   font-size: 0.8rem !important;
   max-width: 300px !important;
   white-space: pre-line !important;
   line-height: 1.4 !important;
-
-/* Center mat-icon glyphs inside circular/gradient containers */
-:host ::ng-deep .bg-gradient-accent mat-icon,
-:host ::ng-deep .upload-icon mat-icon,
-:host ::ng-deep .clear-btn mat-icon {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  line-height: 1 !important;
-  vertical-align: middle !important;
-}
-
   padding: 12px !important;
   border-radius: 8px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Flex centering for circular icons (chatbot avatar, upload status, clear button) */
+.bg-gradient-accent,
+.upload-icon,
+.clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bg-gradient-accent mat-icon,
+.upload-icon mat-icon,
+.clear-btn mat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0; /* kill baseline gap */
+  font-size: 1.25rem; /* 20px */
+  width: 1.25rem;
+  height: 1.25rem;
 }
