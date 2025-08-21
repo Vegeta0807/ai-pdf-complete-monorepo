@@ -53,12 +53,12 @@ app.use('/api/chat', chatRoutes);
 // Serve Angular frontend in production
 if (process.env.NODE_ENV === 'production') {
   const path = require('path');
-  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+  app.use(express.static(path.join(__dirname, '../frontend/dist/ai-pdf-app')));
 
   // Handle Angular routing - send all non-API requests to index.html
   app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
-      res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+      res.sendFile(path.join(__dirname, '../frontend/dist/ai-pdf-app/index.html'));
     } else {
       // API route not found
       res.status(404).json({
