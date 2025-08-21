@@ -60,10 +60,12 @@ if (process.env.NODE_ENV === 'production') {
   const path = require('path');
   const fs = require('fs');
 
-  // Try multiple possible build locations
+  // Try multiple possible build locations (Angular 17+ uses browser subfolder)
   const possiblePaths = [
+    path.join(__dirname, '../frontend/dist/ai-pdf-app/browser'),
     path.join(__dirname, '../frontend/dist/ai-pdf-app'),
     path.join(__dirname, '../frontend/dist'),
+    path.join(__dirname, '../dist/ai-pdf-app/browser'),
     path.join(__dirname, '../dist/ai-pdf-app'),
     path.join(__dirname, '../dist')
   ];
