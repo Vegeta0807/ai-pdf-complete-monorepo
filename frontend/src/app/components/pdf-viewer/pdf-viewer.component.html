@@ -1,6 +1,6 @@
 <div class="pdf-viewer-container h-full flex flex-col">
   <!-- Hidden file input for click to upload -->
-  <input #fileInput type="file" accept=".pdf" (change)="onFileSelected($event)" style="display: none;">
+  <input #fileInput type="file" accept=".pdf" (change)="onFileSelected($event)" class="hidden-file-input">
 
   <!-- Upload Section -->
   <div class="upload-section flex-1 flex items-center justify-center"

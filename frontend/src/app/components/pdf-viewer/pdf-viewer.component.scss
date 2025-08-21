@@ -3,6 +3,10 @@
   background: var(--gradient-primary);
 }
 
+.hidden-file-input {
+  display: none !important;
+}
+
 .upload-section {
   @apply flex-1 flex items-center justify-center p-8 transition-all duration-300;
   background: var(--gradient-primary);

@@ -4,9 +4,15 @@ const { generateEmbeddings } = require('./embeddingService');
 
 class VectorService {
   constructor() {
-    this.client = new ChromaClient({
-      path: process.env.NODE_ENV === 'production' ? ':memory:' : (process.env.CHROMA_URL || 'http://localhost:8000')
-    });
+    // Use embedded ChromaDB for production (no external server needed)
+    if (process.env.NODE_ENV === 'production') {
+      // Use embedded mode - no path means embedded
+      this.client = new ChromaClient();
+    } else {
+      this.client = new ChromaClient({
+        path: process.env.CHROMA_URL || 'http://localhost:8000'
+      });
+    }
     this.collectionName = 'pdf_documents';
     this.collection = null;
   }
