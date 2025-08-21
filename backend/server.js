@@ -53,12 +53,37 @@ app.use('/api/chat', chatRoutes);
 // Serve Angular frontend in production
 if (process.env.NODE_ENV === 'production') {
   const path = require('path');
-  app.use(express.static(path.join(__dirname, '../frontend/dist/ai-pdf-app')));
+  const fs = require('fs');
+
+  // Debug: Check what files exist
+  const distPath = path.join(__dirname, '../frontend/dist');
+  const appPath = path.join(__dirname, '../frontend/dist/ai-pdf-app');
+
+  console.log('🔍 Checking build files...');
+  console.log('Dist path exists:', fs.existsSync(distPath));
+  console.log('App path exists:', fs.existsSync(appPath));
+
+  if (fs.existsSync(distPath)) {
+    console.log('Dist contents:', fs.readdirSync(distPath));
+  }
+  if (fs.existsSync(appPath)) {
+    console.log('App contents:', fs.readdirSync(appPath));
+  }
+
+  app.use(express.static(appPath));
 
   // Handle Angular routing - send all non-API requests to index.html
   app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
-      res.sendFile(path.join(__dirname, '../frontend/dist/ai-pdf-app/index.html'));
+      const indexPath = path.join(appPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(500).json({
+          success: false,
+          message: `Frontend build not found. Checked: ${indexPath}`
+        });
+      }
     } else {
       // API route not found
       res.status(404).json({

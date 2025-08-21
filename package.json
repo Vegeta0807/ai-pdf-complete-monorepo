@@ -26,11 +26,12 @@
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm start",
 
-    "build": "npm run build:backend && npm run build:frontend",
+    "build": "npm run build:frontend && npm run build:backend",
     "build:backend": "cd backend && npm install",
     "build:frontend": "cd frontend && npm install && npm run build",
+    "railway:build": "cd frontend && npm ci && npm run build && cd ../backend && npm ci",
 
-    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start": "cd backend && npm start",
     "start:backend": "cd backend && npm start",
     "start:frontend": "cd frontend && npm run serve",
 
