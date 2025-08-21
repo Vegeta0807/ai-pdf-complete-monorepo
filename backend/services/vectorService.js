@@ -4,11 +4,14 @@ const { generateEmbeddings } = require('./embeddingService');
 
 class VectorService {
   constructor() {
-    // Use embedded ChromaDB for production (no external server needed)
+    // Use different approaches for production vs development
     if (process.env.NODE_ENV === 'production') {
-      // Use embedded mode - no path means embedded
-      this.client = new ChromaClient();
+      // Use in-memory storage for production (no ChromaDB server needed)
+      this.useInMemory = true;
+      this.memoryStore = new Map(); // Simple in-memory vector store
+      this.client = null;
     } else {
+      this.useInMemory = false;
       this.client = new ChromaClient({
         path: process.env.CHROMA_URL || 'http://localhost:8000'
       });
@@ -22,7 +25,23 @@ class VectorService {
    */
   async initialize() {
     try {
-      // Try to get existing collection
+      if (this.useInMemory) {
+        // In-memory mode - no external ChromaDB needed
+        if (!this.memoryStore.has(this.collectionName)) {
+          this.memoryStore.set(this.collectionName, {
+            documents: [],
+            embeddings: [],
+            metadatas: [],
+            ids: []
+          });
+          console.log(`🆕 Created in-memory collection: ${this.collectionName}`);
+        } else {
+          console.log(`✅ Connected to in-memory collection: ${this.collectionName}`);
+        }
+        return;
+      }
+
+      // ChromaDB mode for development
       try {
         this.collection = await this.client.getCollection({
           name: this.collectionName
@@ -79,13 +98,23 @@ class VectorService {
         ...metadata
       }));
 
-      // Store in Chroma
-      await this.collection.add({
-        ids,
-        embeddings,
-        documents,
-        metadatas
-      });
+      // Store vectors
+      if (this.useInMemory) {
+        // Store in memory
+        const collection = this.memoryStore.get(this.collectionName);
+        collection.ids.push(...ids);
+        collection.embeddings.push(...embeddings);
+        collection.documents.push(...documents);
+        collection.metadatas.push(...metadatas);
+      } else {
+        // Store in ChromaDB
+        await this.collection.add({
+          ids,
+          embeddings,
+          documents,
+          metadatas
+        });
+      }
 
       const processingTime = Date.now() - startTime;
       console.log(`✅ Document vectorized: ${chunks.length} chunks in ${processingTime}ms`);
@@ -116,40 +145,76 @@ class VectorService {
       // Generate embedding for the query
       const queryEmbedding = await generateEmbeddings([query]);
 
-      // Prepare search parameters
-      const searchParams = {
-        queryEmbeddings: queryEmbedding,
-        nResults: limit
-      };
+      if (this.useInMemory) {
+        // In-memory search using cosine similarity
+        const collection = this.memoryStore.get(this.collectionName);
+        const results = [];
 
-      // Add document filter if specified
-      if (documentId) {
-        searchParams.where = { document_id: documentId };
-      }
+        for (let i = 0; i < collection.embeddings.length; i++) {
+          // Filter by document ID if specified
+          if (documentId && collection.metadatas[i].document_id !== documentId) {
+            continue;
+          }
 
-      // Search in Chroma
-      const results = await this.collection.query(searchParams);
-
-      // Format results
-      const formattedResults = [];
-      if (results.documents && results.documents[0]) {
-        for (let i = 0; i < results.documents[0].length; i++) {
-          formattedResults.push({
-            content: results.documents[0][i],
-            similarity: 1 - (results.distances[0][i] || 0), // Convert distance to similarity
-            metadata: results.metadatas[0][i],
-            id: results.ids[0][i]
+          // Calculate cosine similarity
+          const similarity = this.cosineSimilarity(queryEmbedding[0], collection.embeddings[i]);
+          results.push({
+            content: collection.documents[i],
+            similarity,
+            metadata: collection.metadatas[i],
+            id: collection.ids[i]
           });
         }
-      }
 
-      console.log(`🔍 Found ${formattedResults.length} similar chunks for query`);
-      return formattedResults;
+        // Sort by similarity and limit results
+        results.sort((a, b) => b.similarity - a.similarity);
+        const formattedResults = results.slice(0, limit);
+
+        console.log(`🔍 Found ${formattedResults.length} similar chunks for query (in-memory)`);
+        return formattedResults;
+      } else {
+        // ChromaDB search for development
+        const searchParams = {
+          queryEmbeddings: queryEmbedding,
+          nResults: limit
+        };
+
+        if (documentId) {
+          searchParams.where = { document_id: documentId };
+        }
+
+        const results = await this.collection.query(searchParams);
+        const formattedResults = [];
+
+        if (results.documents && results.documents[0]) {
+          for (let i = 0; i < results.documents[0].length; i++) {
+            formattedResults.push({
+              content: results.documents[0][i],
+              similarity: 1 - (results.distances[0][i] || 0),
+              metadata: results.metadatas[0][i],
+              id: results.ids[0][i]
+            });
+          }
+        }
+
+        console.log(`🔍 Found ${formattedResults.length} similar chunks for query`);
+        return formattedResults;
+      }
 
     } catch (error) {
       console.error('Search error:', error);
       throw new Error(`Failed to search similar chunks: ${error.message}`);
     }
+  }
+
+  /**
+   * Calculate cosine similarity between two vectors
+   */
+  cosineSimilarity(vecA, vecB) {
+    const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+    const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
+    const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+    return dotProduct / (magnitudeA * magnitudeB);
   }
 
   /**

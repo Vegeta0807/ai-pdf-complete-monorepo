@@ -31,12 +31,12 @@
       </div>
     </div>
     
-    <input 
-      type="file" 
-      id="fileInput" 
-      accept=".pdf" 
+    <input
+      type="file"
+      id="fileInput"
+      accept=".pdf"
       (change)="onFileSelected($event)"
-      style="display: none;"
+      class="hidden-file-input"
     >
     
     <div *ngIf="selectedFile" class="file-selected">
