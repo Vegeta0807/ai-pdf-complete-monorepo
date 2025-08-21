@@ -36,40 +36,46 @@ class MemoryVectorService {
       await this.initialize();
 
       // Chunk the text
-      const chunks = chunkText(text, 1000, 200);
-      
-      if (chunks.length === 0) {
+      const chunkObjects = chunkText(text, 1000, 200);
+
+      if (chunkObjects.length === 0) {
         throw new Error('No text chunks generated from document');
       }
 
+      // Extract text strings from chunk objects
+      const chunks = chunkObjects.map(chunk => chunk.text);
+
       // Generate embeddings for all chunks
-      console.log(`🔄 Generating embeddings for ${chunks.length} chunks...`);
+      console.log(`🔄 Generating embeddings for ${chunkObjects.length} chunks...`);
       const embeddings = await generateEmbeddings(chunks);
 
       // Prepare data
-      const ids = chunks.map((_, index) => `${documentId}_chunk_${index}`);
+      const ids = chunkObjects.map((_, index) => `${documentId}_chunk_${index}`);
       const documents = chunks;
-      const metadatas = chunks.map((chunk, index) => ({
+      const metadatas = chunkObjects.map((chunkObj, index) => ({
         document_id: documentId,
         chunk_index: index,
-        chunk_text: chunk.substring(0, 100) + '...',
+        chunk_text: chunkObj.text.substring(0, 100) + '...',
+        page_number: chunkObj.estimatedPage,
+        start_char: chunkObj.startChar,
+        end_char: chunkObj.endChar,
         ...metadata
       }));
 
       // Store in memory
-      console.log(`💾 Storing ${chunks.length} chunks in memory...`);
+      console.log(`💾 Storing ${chunkObjects.length} chunks in memory...`);
       this.memoryStore.ids.push(...ids);
       this.memoryStore.embeddings.push(...embeddings);
       this.memoryStore.documents.push(...documents);
       this.memoryStore.metadatas.push(...metadatas);
 
       const processingTime = Date.now() - startTime;
-      console.log(`✅ Document vectorized: ${chunks.length} chunks in ${processingTime}ms`);
+      console.log(`✅ Document vectorized: ${chunkObjects.length} chunks in ${processingTime}ms`);
 
       return {
         success: true,
         documentId,
-        chunkCount: chunks.length,
+        chunkCount: chunkObjects.length,
         processingTime
       };
 
