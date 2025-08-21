@@ -1,6 +1,6 @@
 const express = require('express');
 const { chatValidation } = require('../middleware/validation');
-const { searchSimilarChunks } = require('../services/vectorService');
+const { searchSimilarChunks } = require('../services/memoryVectorService');
 const { generateResponse } = require('../services/aiService');
 
 const router = express.Router();
