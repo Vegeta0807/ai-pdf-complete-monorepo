@@ -5,7 +5,7 @@ const { generateEmbeddings } = require('./embeddingService');
 class VectorService {
   constructor() {
     this.client = new ChromaClient({
-      path: process.env.CHROMA_URL || 'http://localhost:8000'
+      path: process.env.NODE_ENV === 'production' ? ':memory:' : (process.env.CHROMA_URL || 'http://localhost:8000')
     });
     this.collectionName = 'pdf_documents';
     this.collection = null;
