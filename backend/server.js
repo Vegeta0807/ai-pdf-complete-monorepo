@@ -23,21 +23,33 @@ if (process.env.NODE_ENV === 'production') {
 // Create uploads directory if it doesn't exist
 createUploadsDir();
 
-// Security middleware - Angular-friendly CSP
+// Security middleware - Angular + PDF.js friendly CSP
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-      scriptSrcAttr: ["'unsafe-inline'"],  // Allow inline event handlers
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "'unsafe-eval'",
+        "https://cdn.jsdelivr.net",
+        "blob:"
+      ],
+      scriptSrcElem: [
+        "'self'",
+        "https://cdn.jsdelivr.net"
+      ],
+      scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      styleSrcAttr: ["'unsafe-inline'"],   // Allow inline styles
+      styleSrcAttr: ["'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
       fontSrc: ["'self'", "data:", "https://fonts.gstatic.com", "https://fonts.googleapis.com"],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", "https://cdn.jsdelivr.net"],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
       frameSrc: ["'none'"],
+      workerSrc: ["'self'", "blob:", "https://cdn.jsdelivr.net"],
+      childSrc: ["'self'", "blob:"],
       baseUri: ["'self'"],
       formAction: ["'self'"]
     }
