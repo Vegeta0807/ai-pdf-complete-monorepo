@@ -26,9 +26,9 @@
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm start",
 
-    "build": "npm run build:frontend && npm run build:backend",
-    "build:backend": "cd backend && npm install",
-    "build:frontend": "cd frontend && npm install && npm run build",
+    "build": "echo '🔨 Starting build process...' && npm run build:frontend && npm run build:backend && echo '✅ Build complete!'",
+    "build:backend": "echo '⚙️ Installing backend deps...' && cd backend && npm install",
+    "build:frontend": "echo '🎨 Building frontend...' && cd frontend && npm install && echo '📦 Frontend deps installed' && npm run build && echo '✅ Frontend build complete' && ls -la dist/",
     "railway:build": "cd frontend && npm ci && npm run build && cd ../backend && npm ci",
 
     "start": "cd backend && npm start",

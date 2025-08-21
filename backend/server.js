@@ -15,6 +15,11 @@ const { createUploadsDir } = require('./src/utils/fileUtils');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for Railway/hosted environments
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Create uploads directory if it doesn't exist
 createUploadsDir();
 
