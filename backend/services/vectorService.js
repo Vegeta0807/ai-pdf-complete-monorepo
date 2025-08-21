@@ -5,12 +5,16 @@ const { generateEmbeddings } = require('./embeddingService');
 class VectorService {
   constructor() {
     // Use different approaches for production vs development
-    if (process.env.NODE_ENV === 'production') {
+    console.log(`🔧 VectorService: NODE_ENV = ${process.env.NODE_ENV}`);
+
+    if (process.env.NODE_ENV === 'production' || true) { // Force in-memory for now
       // Use in-memory storage for production (no ChromaDB server needed)
+      console.log(`🧠 VectorService: Using in-memory storage for production`);
       this.useInMemory = true;
       this.memoryStore = new Map(); // Simple in-memory vector store
       this.client = null;
     } else {
+      console.log(`🔗 VectorService: Using ChromaDB for development`);
       this.useInMemory = false;
       this.client = new ChromaClient({
         path: process.env.CHROMA_URL || 'http://localhost:8000'
@@ -25,8 +29,11 @@ class VectorService {
    */
   async initialize() {
     try {
+      console.log(`🔧 VectorService.initialize: useInMemory = ${this.useInMemory}`);
+
       if (this.useInMemory) {
         // In-memory mode - no external ChromaDB needed
+        console.log(`🧠 VectorService: Initializing in-memory storage`);
         if (!this.memoryStore.has(this.collectionName)) {
           this.memoryStore.set(this.collectionName, {
             documents: [],
