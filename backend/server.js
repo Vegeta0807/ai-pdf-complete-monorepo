@@ -24,7 +24,21 @@ if (process.env.NODE_ENV === 'production') {
 createUploadsDir();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      fontSrc: ["'self'", "data:"],
+      connectSrc: ["'self'", "https:", "http:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"]
+    }
+  }
+}));
 app.use(compression());
 
 // CORS configuration
@@ -84,6 +98,7 @@ if (process.env.NODE_ENV === 'production') {
       const testIndexPath = path.join(testPath, 'index.html');
       if (fs.existsSync(testIndexPath)) {
         console.log(`✅ Found index.html at: ${testIndexPath}`);
+        console.log(`📁 All files in build directory:`, fs.readdirSync(testPath));
         staticPath = testPath;
         indexPath = testIndexPath;
         break;
@@ -95,7 +110,18 @@ if (process.env.NODE_ENV === 'production') {
 
   if (staticPath && indexPath) {
     console.log(`🚀 Serving static files from: ${staticPath}`);
-    app.use(express.static(staticPath));
+
+    // Serve static files with proper headers
+    app.use(express.static(staticPath, {
+      setHeaders: (res, path) => {
+        if (path.endsWith('.css')) {
+          res.setHeader('Content-Type', 'text/css');
+        }
+        if (path.endsWith('.js')) {
+          res.setHeader('Content-Type', 'application/javascript');
+        }
+      }
+    }));
 
     // Handle Angular routing
     app.get('*', (req, res) => {
@@ -152,7 +178,9 @@ process.on('SIGINT', () => {
 app.listen(PORT, () => {
   console.log(`🚀 AI PDF Chat Backend running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🔗 Chroma DB: ${process.env.CHROMA_URL}`);
+
+  const chromaMode = process.env.NODE_ENV === 'production' ? 'In-Memory (Non-Persistent)' : (process.env.CHROMA_URL || 'http://localhost:8000');
+  console.log(`🔗 Chroma DB: ${chromaMode}`);
 });
 
 module.exports = app;
