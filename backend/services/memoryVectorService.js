@@ -1,6 +1,6 @@
 // PURE IN-MEMORY VECTOR SERVICE - NO CHROMADB DEPENDENCIES
-const { chunkText } = require('./pdfService');
-const { generateEmbeddings } = require('./embeddingService');
+const { chunkText } = require('../src/services/pdfService');
+const { generateEmbeddings } = require('../src/services/embeddingService');
 
 class MemoryVectorService {
   constructor() {
