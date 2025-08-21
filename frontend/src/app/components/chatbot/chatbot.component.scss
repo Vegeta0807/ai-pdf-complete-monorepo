@@ -84,31 +84,137 @@
   }
 }
 
-.chat-messages::-webkit-scrollbar {
+.chat-messages-container::-webkit-scrollbar {
   @apply w-1.5;
 }
 
-.chat-messages::-webkit-scrollbar-track {
-  @apply bg-gray-100 rounded;
+.chat-messages-container::-webkit-scrollbar-track {
+  @apply bg-white/10 rounded;
 }
 
-.chat-messages::-webkit-scrollbar-thumb {
-  @apply bg-gray-400 rounded;
+.chat-messages-container::-webkit-scrollbar-thumb {
+  @apply bg-white/30 rounded;
 
   &:hover {
-    @apply bg-gray-500;
+    @apply bg-white/50;
   }
 }
 
+// Mobile scrollbar styling
+@media (max-width: 768px) {
+  .chat-messages-container::-webkit-scrollbar {
+    @apply w-2; // Slightly wider for touch
+  }
+
+  .chat-messages-container::-webkit-scrollbar-thumb {
+    @apply bg-white/40; // More visible on mobile
+
+    &:hover {
+      @apply bg-white/60;
+    }
+  }
+}
+
+// Mobile responsiveness
 @media (max-width: 768px) {
   .chatbot-container {
+    .chat-header-minimal {
+      @apply px-3 py-2;
+
+      .clear-btn {
+        @apply w-9 h-9;
+
+        mat-icon {
+          @apply text-base;
+        }
+      }
+    }
+
     .quick-actions {
       .action-buttons {
-        @apply flex-col;
+        @apply flex-col gap-2;
 
         button {
-          @apply justify-start;
+          @apply justify-start text-xs py-2 px-3;
         }
+      }
+    }
+  }
+
+  .chat-messages-container {
+    @apply px-3 py-3 gap-3;
+
+    .message-bubble {
+      @apply max-w-[85%] text-sm;
+
+      &.user-message {
+        @apply ml-2;
+      }
+
+      &.ai-message {
+        @apply mr-2;
+      }
+    }
+  }
+
+  .chat-input-container {
+    @apply px-3 pt-3 pb-4;
+  }
+
+  .input-field {
+    .input-content {
+      @apply px-3 py-2;
+
+      .message-input {
+        @apply text-sm;
+        max-height: 100px;
+      }
+    }
+
+    .input-actions {
+      @apply px-2 py-2;
+
+      .send-button {
+        @apply w-9 h-9;
+      }
+    }
+  }
+}
+
+// Small mobile screens
+@media (max-width: 480px) {
+  .chatbot-container {
+    .chat-messages-container {
+      @apply px-2 py-2 gap-2;
+    }
+
+    .message-bubble {
+      @apply max-w-[90%];
+
+      &.user-message {
+        @apply ml-1;
+      }
+
+      &.ai-message {
+        @apply mr-1;
+      }
+    }
+  }
+
+  .chat-input-container {
+    @apply px-2 pt-2 pb-3;
+  }
+
+  .input-field {
+    .input-content {
+      @apply px-2 py-2;
+    }
+
+    .input-actions {
+      @apply px-2 py-1;
+
+      .send-button {
+        @apply w-8 h-8;
       }
     }
   }

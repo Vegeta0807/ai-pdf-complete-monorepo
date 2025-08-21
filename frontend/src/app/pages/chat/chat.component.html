@@ -19,7 +19,13 @@
         </svg>
       </div>
       <div class="document-details">
-        <h1>{{ getDocumentTitle() }}</h1>
+        <h1
+          [matTooltip]="getFullDocumentTitle()"
+          [matTooltipDisabled]="getDocumentTitle().length <= 25"
+          matTooltipPosition="below"
+          class="truncated-title">
+          {{ getTruncatedDocumentTitle() }}
+        </h1>
         <p *ngIf="getDocumentSubtitle()">{{ getDocumentSubtitle() }}</p>
       </div>
     </div>
@@ -31,9 +37,39 @@
               routerLink="/upload"
               matTooltip="Upload a different PDF">
         <mat-icon class="mr-2">upload_file</mat-icon>
-        Upload PDF
+        <span class="btn-text">Upload PDF</span>
       </button>
     </div>
+  </div>
+
+  <!-- Mobile Controls -->
+  <div class="mobile-controls">
+    <!-- Upload PDF Button (always visible on mobile) -->
+    <button
+      class="control-btn upload-btn"
+      routerLink="/upload"
+      title="Upload PDF">
+      <mat-icon>upload_file</mat-icon>
+    </button>
+
+    <!-- PDF Toggle Button (only when PDF is loaded) -->
+    <button
+      class="control-btn pdf-toggle-btn"
+      (click)="toggleMobilePdf()"
+      [class.active]="showMobilePdf"
+      title="Toggle PDF View"
+      *ngIf="pdfSrc">
+      <mat-icon>picture_as_pdf</mat-icon>
+    </button>
+
+    <!-- Reset Chat Button (only when PDF is loaded) -->
+    <button
+      class="control-btn reset-btn"
+      (click)="resetChat()"
+      title="Reset Chat"
+      *ngIf="pdfSrc">
+      <mat-icon>refresh</mat-icon>
+    </button>
   </div>
 
   <!-- Main Content -->
@@ -55,12 +91,35 @@
 
       <!-- Chat Container -->
       <div class="chat-container">
-        <app-chatbot [pdfSrc]="pdfSrc" (userMessageSent)="onUserMessageSent()"></app-chatbot>
+        <app-chatbot
+          [pdfSrc]="pdfSrc"
+          (userMessageSent)="onUserMessageSent()"
+          (citationClicked)="onCitationClick($event)">
+        </app-chatbot>
       </div>
     </div>
 
     <!-- PDF Section (Right) -->
     <div class="pdf-section">
+      <app-pdf-viewer [pdfSrc]="pdfSrc"></app-pdf-viewer>
+    </div>
+  </div>
+
+  <!-- Mobile PDF Overlay -->
+  <div class="mobile-pdf-overlay" [class.show]="showMobilePdf" *ngIf="pdfSrc">
+    <div class="mobile-pdf-header">
+      <h3
+        [matTooltip]="getDocumentFilename()"
+        [matTooltipDisabled]="getDocumentFilename().length <= 25"
+        matTooltipPosition="below"
+        class="truncated-title">
+        {{ getTruncatedDocumentFilename() }}
+      </h3>
+      <button class="close-btn" (click)="toggleMobilePdf()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <div class="mobile-pdf-content">
       <app-pdf-viewer [pdfSrc]="pdfSrc"></app-pdf-viewer>
     </div>
   </div>

@@ -195,10 +195,10 @@ app.listen(PORT, () => {
   console.log(`🚀 AI PDF Chat Backend running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🕐 Deployment Time: ${new Date().toISOString()}`);
-  console.log(`🧠 Vector Storage: IN-MEMORY MODE (No ChromaDB server needed)`);
 
-  const chromaMode = 'In-Memory Vector Storage';
-  console.log(`🔗 Vector DB: ${chromaMode}`);
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const vectorMode = isDevelopment ? 'ChromaDB Vector Storage' : 'In-Memory Vector Storage';
+  console.log(`🔗 Vector DB: ${vectorMode}`);
 });
 
 module.exports = app;

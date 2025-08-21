@@ -1,33 +1,42 @@
-// COMPLETE REWRITE - NO CHROMADB DEPENDENCY AT ALL
-// const { ChromaClient } = require('chromadb'); // REMOVED - NO CHROMADB
+const { ChromaClient } = require('chromadb');
 const { chunkText } = require('./pdfService');
 const { generateEmbeddings } = require('./embeddingService');
 
 class VectorService {
   constructor() {
-    console.log(`🚀 VectorService: PURE IN-MEMORY MODE - NO CHROMADB AT ALL`);
-    console.log(`🔧 VectorService: NODE_ENV = ${process.env.NODE_ENV}`);
-
-    // Pure in-memory storage - no external dependencies
-    this.memoryStore = {
-      documents: [],
-      embeddings: [],
-      metadatas: [],
-      ids: []
-    };
-
+    this.client = new ChromaClient({
+      path: process.env.CHROMA_URL || 'http://localhost:8000'
+    });
     this.collectionName = 'pdf_documents';
-    console.log(`✅ VectorService: Pure in-memory storage initialized`);
+    this.collection = null;
   }
 
   /**
-   * Initialize the vector service - pure in-memory, no external dependencies
+   * Initialize the vector service and create collection if needed
    */
   async initialize() {
-    console.log(`🧠 VectorService: Pure in-memory initialization - no external calls`);
-    console.log(`✅ In-memory collection ready: ${this.collectionName}`);
-    // Nothing to initialize - pure in-memory storage is ready
-    return Promise.resolve();
+    try {
+      // Try to get existing collection
+      try {
+        this.collection = await this.client.getCollection({
+          name: this.collectionName
+        });
+        console.log(`✅ Connected to existing collection: ${this.collectionName}`);
+      } catch (error) {
+        // Collection doesn't exist, create it
+        this.collection = await this.client.createCollection({
+          name: this.collectionName,
+          metadata: {
+            description: 'PDF document chunks for RAG system',
+            created_at: new Date().toISOString()
+          }
+        });
+        console.log(`🆕 Created new collection: ${this.collectionName}`);
+      }
+    } catch (error) {
+      console.error('Failed to initialize vector service:', error);
+      throw error;
+    }
   }
 
   /**
@@ -64,12 +73,13 @@ class VectorService {
         ...metadata
       }));
 
-      // Store vectors in memory
-      console.log(`💾 Storing ${chunks.length} chunks in memory...`);
-      this.memoryStore.ids.push(...ids);
-      this.memoryStore.embeddings.push(...embeddings);
-      this.memoryStore.documents.push(...documents);
-      this.memoryStore.metadatas.push(...metadatas);
+      // Store in Chroma
+      await this.collection.add({
+        ids,
+        embeddings,
+        documents,
+        metadatas
+      });
 
       const processingTime = Date.now() - startTime;
       console.log(`✅ Document vectorized: ${chunks.length} chunks in ${processingTime}ms`);
@@ -100,47 +110,40 @@ class VectorService {
       // Generate embedding for the query
       const queryEmbedding = await generateEmbeddings([query]);
 
-      // In-memory search using cosine similarity
-      console.log(`🔍 Searching ${this.memoryStore.embeddings.length} stored chunks...`);
-      const results = [];
+      // Prepare search parameters
+      const searchParams = {
+        queryEmbeddings: queryEmbedding,
+        nResults: limit
+      };
 
-      for (let i = 0; i < this.memoryStore.embeddings.length; i++) {
-        // Filter by document ID if specified
-        if (documentId && this.memoryStore.metadatas[i].document_id !== documentId) {
-          continue;
-        }
-
-        // Calculate cosine similarity
-        const similarity = this.cosineSimilarity(queryEmbedding[0], this.memoryStore.embeddings[i]);
-        results.push({
-          content: this.memoryStore.documents[i],
-          similarity,
-          metadata: this.memoryStore.metadatas[i],
-          id: this.memoryStore.ids[i]
-        });
+      // Add document filter if specified
+      if (documentId) {
+        searchParams.where = { document_id: documentId };
       }
 
-      // Sort by similarity and limit results
-      results.sort((a, b) => b.similarity - a.similarity);
-      const formattedResults = results.slice(0, limit);
+      // Search in Chroma
+      const results = await this.collection.query(searchParams);
 
-      console.log(`🔍 Found ${formattedResults.length} similar chunks for query (pure in-memory)`);
+      // Format results
+      const formattedResults = [];
+      if (results.documents && results.documents[0]) {
+        for (let i = 0; i < results.documents[0].length; i++) {
+          formattedResults.push({
+            content: results.documents[0][i],
+            similarity: 1 - (results.distances[0][i] || 0), // Convert distance to similarity
+            metadata: results.metadatas[0][i],
+            id: results.ids[0][i]
+          });
+        }
+      }
+
+      console.log(`🔍 Found ${formattedResults.length} similar chunks for query`);
       return formattedResults;
 
     } catch (error) {
       console.error('Search error:', error);
       throw new Error(`Failed to search similar chunks: ${error.message}`);
     }
-  }
-
-  /**
-   * Calculate cosine similarity between two vectors
-   */
-  cosineSimilarity(vecA, vecB) {
-    const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
-    const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
-    const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
-    return dotProduct / (magnitudeA * magnitudeB);
   }
 
   /**
@@ -152,24 +155,12 @@ class VectorService {
     try {
       await this.initialize();
 
-      // Delete all chunks for this document from memory
-      const indicesToRemove = [];
-      for (let i = 0; i < this.memoryStore.metadatas.length; i++) {
-        if (this.memoryStore.metadatas[i].document_id === documentId) {
-          indicesToRemove.push(i);
-        }
-      }
+      // Delete all chunks for this document
+      await this.collection.delete({
+        where: { document_id: documentId }
+      });
 
-      // Remove in reverse order to maintain indices
-      for (let i = indicesToRemove.length - 1; i >= 0; i--) {
-        const index = indicesToRemove[i];
-        this.memoryStore.ids.splice(index, 1);
-        this.memoryStore.embeddings.splice(index, 1);
-        this.memoryStore.documents.splice(index, 1);
-        this.memoryStore.metadatas.splice(index, 1);
-      }
-
-      console.log(`🗑️ Deleted document: ${documentId} (${indicesToRemove.length} chunks)`);
+      console.log(`🗑️ Deleted document: ${documentId}`);
       return true;
 
     } catch (error) {
@@ -187,23 +178,14 @@ class VectorService {
     try {
       await this.initialize();
 
-      // Count chunks for this document
-      let chunkCount = 0;
-      let firstMetadata = null;
-
-      for (let i = 0; i < this.memoryStore.metadatas.length; i++) {
-        if (this.memoryStore.metadatas[i].document_id === documentId) {
-          chunkCount++;
-          if (!firstMetadata) {
-            firstMetadata = this.memoryStore.metadatas[i];
-          }
-        }
-      }
+      const results = await this.collection.get({
+        where: { document_id: documentId }
+      });
 
       return {
         documentId,
-        chunkCount,
-        metadata: firstMetadata || {}
+        chunkCount: results.ids.length,
+        metadata: results.metadatas[0] || {}
       };
 
     } catch (error) {

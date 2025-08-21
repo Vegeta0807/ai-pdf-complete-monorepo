@@ -8,11 +8,11 @@ console.log('🚀 Starting AI PDF Chat Development Environment...\n');
 // Function to check if ChromaDB is running
 function checkChromaDB() {
   return new Promise((resolve) => {
-    exec('docker ps --filter name=chroma-db --format "{{.Names}}"', (error, stdout) => {
+    exec('docker ps --filter name=ai-pdf-chroma-dev --format "{{.Names}}"', (error, stdout) => {
       if (error) {
         resolve(false);
       } else {
-        resolve(stdout.trim() === 'chroma-db');
+        resolve(stdout.trim() === 'ai-pdf-chroma-dev');
       }
     });
   });
@@ -21,8 +21,8 @@ function checkChromaDB() {
 // Function to start ChromaDB
 function startChromaDB() {
   return new Promise((resolve, reject) => {
-    console.log('🐳 Starting ChromaDB...');
-    const dockerProcess = spawn('npm', ['run', 'docker:up'], {
+    console.log('🐳 Starting ChromaDB for development...');
+    const dockerProcess = spawn('npm', ['run', 'docker:dev'], {
       stdio: 'inherit',
       shell: true,
       cwd: process.cwd()

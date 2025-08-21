@@ -50,8 +50,11 @@
           <h3 class="text-2xl font-semibold text-gray-800 mb-2">
             File Selected
           </h3>
-          <p class="text-lg text-gray-600 mb-2">
-            {{ pdfState.filename }}
+          <p class="text-lg text-gray-600 mb-2 cursor-help"
+             [matTooltip]="pdfState.filename"
+             [matTooltipDisabled]="pdfState.filename.length <= 25"
+             matTooltipPosition="below">
+            {{ getTruncatedFilename(pdfState.filename) }}
           </p>
           <p class="text-sm text-gray-600">
             {{ (pdfState.file.size / 1024 / 1024) | number:'1.1-1' }} MB
@@ -75,8 +78,11 @@
           <h3 class="text-2xl font-semibold text-gray-800 mb-2">
             Upload Successful!
           </h3>
-          <p class="text-lg text-gray-600 mb-2">
-            {{ pdfState.filename }}
+          <p class="text-lg text-gray-600 mb-2 cursor-help"
+             [matTooltip]="pdfState.filename"
+             [matTooltipDisabled]="pdfState.filename.length <= 25"
+             matTooltipPosition="below">
+            {{ getTruncatedFilename(pdfState.filename) }}
           </p>
           <p class="text-sm text-gray-600">
             {{ pdfState.pages }} pages processed

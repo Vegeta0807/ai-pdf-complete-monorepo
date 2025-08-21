@@ -3,7 +3,7 @@ import { PdfStateService } from '../../services/pdf-state.service';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { PdfViewerComponent } from '../../components/pdf-viewer/pdf-viewer.component';
-import { ChatbotComponent } from '../../components/chatbot/chatbot.component';
+import { ChatbotComponent, Citation } from '../../components/chatbot/chatbot.component';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -28,6 +28,7 @@ export class ChatComponent implements OnInit, OnDestroy {
   hasUserSentMessage = false;
   isUploadingToApi = false;
   uploadProgress = '';
+  showMobilePdf = false; // Toggle state for mobile PDF viewer
   private fileSubscription?: any;
   private stateSubscription?: any;
 
@@ -129,6 +130,35 @@ export class ChatComponent implements OnInit, OnDestroy {
     return 'Your document is ready!';
   }
 
+  // Helper method to truncate text for display
+  truncateText(text: string, maxLength: number = 25): string {
+    if (!text) return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  }
+
+  // Get full document title for tooltips
+  getFullDocumentTitle(): string {
+    return this.getDocumentTitle();
+  }
+
+  // Get truncated document title for display
+  getTruncatedDocumentTitle(): string {
+    return this.truncateText(this.getDocumentTitle(), 25);
+  }
+
+  // Get just the filename without "is ready!" suffix for mobile overlay
+  getDocumentFilename(): string {
+    if (this.pdfState.file) {
+      return this.pdfState.file.name;
+    }
+    return 'PDF Document';
+  }
+
+  // Get truncated filename for mobile overlay
+  getTruncatedDocumentFilename(): string {
+    return this.truncateText(this.getDocumentFilename(), 25);
+  }
+
   getDocumentSubtitle(): string {
     if (this.isUploadingToApi && this.uploadProgress) {
       return this.uploadProgress;
@@ -188,5 +218,22 @@ export class ChatComponent implements OnInit, OnDestroy {
 
   onUserMessageSent() {
     this.hasUserSentMessage = true;
+  }
+
+  toggleMobilePdf() {
+    this.showMobilePdf = !this.showMobilePdf;
+  }
+
+  onCitationClick(citation: Citation) {
+    // Show PDF viewer and navigate to page when citation is clicked on mobile
+    this.showMobilePdf = true;
+    // The PDF navigation will be handled by the existing citation click logic in chatbot component
+  }
+
+  resetChat() {
+    // Reset the chat state and navigate back to upload
+    this.pdfState.clearPdf();
+    // You could also navigate to upload page if needed
+    // this.router.navigate(['/upload']);
   }
 }

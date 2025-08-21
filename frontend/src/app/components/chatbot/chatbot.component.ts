@@ -70,6 +70,7 @@ export interface ChatMessage {
 export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('messageInput') messageInput!: ElementRef<HTMLTextAreaElement>;
   @Output() userMessageSent = new EventEmitter<void>();
+  @Output() citationClicked = new EventEmitter<Citation>();
   @Input() pdfSrc: Uint8Array | null = null;
 
   private destroy$ = new Subject<void>();
@@ -123,9 +124,10 @@ export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
   private handleUploadComplete(state: any) {
     // Add a completion message to the chat
     const filename = state.filename || 'your document';
+    const truncatedFilename = this.truncateText(filename, 25);
     const pages = state.pages || 'multiple';
 
-    const completionMessage = `✅ Perfect! I've successfully processed "${filename}" (${pages} pages). Your document is now ready for analysis. I can help you with:
+    const completionMessage = `✅ Perfect! I've successfully processed "${truncatedFilename}" (${pages} pages). Your document is now ready for analysis. I can help you with:
 
 • Summarizing key points and main ideas
 • Answering specific questions about the content
@@ -274,6 +276,12 @@ What would you like to know about your document?`;
     return Date.now().toString() + Math.random().toString(36).substring(2, 11);
   }
 
+  // Helper method to truncate text for display
+  private truncateText(text: string, maxLength: number = 25): string {
+    if (!text) return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  }
+
   onKeyPress(event: KeyboardEvent) {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
@@ -307,6 +315,9 @@ What would you like to know about your document?`;
    */
   onCitationClick(citation: Citation): void {
     console.log('🔗 Citation clicked:', citation);
+
+    // Emit citation click to parent component (for mobile PDF viewer)
+    this.citationClicked.emit(citation);
 
     if (citation.pageNumber && citation.pageNumber > 0) {
       // Try to navigate

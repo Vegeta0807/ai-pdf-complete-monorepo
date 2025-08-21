@@ -4,7 +4,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { uploadValidation } = require('../middleware/validation');
 const { processPDF } = require('../services/pdfService');
-const { vectorizeDocument } = require('../../services/memoryVectorService');
+const { vectorizeDocument } = require('../../services/vectorServiceSelector');
 
 const router = express.Router();
 

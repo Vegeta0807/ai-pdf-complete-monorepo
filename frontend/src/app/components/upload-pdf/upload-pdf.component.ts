@@ -5,6 +5,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatCardModule } from '@angular/material/card';
 import { Subject, takeUntil } from 'rxjs';
 import { PdfStateService, PdfState } from '../../services/pdf-state.service';
 
@@ -17,7 +19,9 @@ import { PdfStateService, PdfState } from '../../services/pdf-state.service';
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatTooltipModule,
+    MatCardModule
   ],
   templateUrl: './upload-pdf.component.html',
   styleUrl: './upload-pdf.component.scss'
@@ -70,6 +74,17 @@ export class UploadPdfComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  // Helper method to truncate text for display
+  truncateText(text: string, maxLength: number = 25): string {
+    if (!text) return '';
+    return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  }
+
+  // Get truncated filename for display
+  getTruncatedFilename(filename: string): string {
+    return this.truncateText(filename, 25);
   }
 
   /**

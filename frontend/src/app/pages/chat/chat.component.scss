@@ -134,17 +134,128 @@
   @apply flex-1 overflow-hidden;
 }
 
+/* Truncated title styling */
+.truncated-title {
+  @apply cursor-help;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+/* Mobile Controls */
+.mobile-controls {
+  @apply hidden fixed z-50 flex-col gap-3;
+  bottom: 120px; /* Position well above the chat input area (chat input is ~80px high) */
+  right: 16px;
+
+  .control-btn {
+    @apply w-14 h-14 rounded-full border-0 text-white text-xl cursor-pointer
+           flex items-center justify-center transition-all duration-300 ease-in-out
+           shadow-lg hover:shadow-xl active:scale-95;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+    &:hover {
+      @apply -translate-y-0.5;
+    }
+
+    &.pdf-toggle-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+      &.active {
+        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+      }
+    }
+
+    &.upload-btn {
+      background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+    }
+
+    &.reset-btn {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+    }
+  }
+}
+
+/* Mobile PDF Overlay */
+.mobile-pdf-overlay {
+  @apply hidden fixed inset-0 z-[60] opacity-0 invisible transition-all duration-300 ease-in-out;
+  background: rgba(0, 0, 0, 0.9);
+
+  &.show {
+    @apply opacity-100 visible;
+  }
+
+  .mobile-pdf-header {
+    @apply flex justify-between items-center p-4 border-b border-white/10 flex-shrink-0;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    height: 70px;
+
+    h3 {
+      @apply text-white m-0 text-lg font-medium;
+    }
+
+    .close-btn {
+      @apply bg-transparent border-0 text-white text-2xl cursor-pointer
+             p-2 rounded-full transition-colors duration-300 hover:bg-white/10
+             flex items-center justify-center;
+      width: 40px;
+      height: 40px;
+    }
+  }
+
+  .mobile-pdf-content {
+    @apply flex-1;
+    height: calc(100vh - 70px);
+    overflow: hidden;
+
+    app-pdf-viewer {
+      @apply h-full w-full block;
+
+      // Ensure PDF viewer takes full space in overlay
+      ::ng-deep .pdf-viewer-container {
+        height: 100% !important;
+        width: 100% !important;
+      }
+
+      ::ng-deep .pdf-content {
+        height: 100% !important;
+      }
+
+      ::ng-deep .pdf-display {
+        height: calc(100% - 60px) !important; // Account for toolbar
+      }
+    }
+  }
+}
+
+// Mobile responsiveness with proper fallbacks
 @media (max-width: 768px) {
   .main-content {
     @apply flex-col;
   }
 
+  .mobile-controls {
+    @apply flex;
+  }
+
+  .mobile-pdf-overlay {
+    @apply flex flex-col;
+  }
+
   .chat-section {
-    @apply border-r-0 border-b border-slate-200;
+    @apply rounded-none border-0 m-0 flex-1;
+    min-height: auto;
+  }
+
+  .pdf-section {
+    @apply hidden; // Hide PDF section on mobile, use overlay instead
   }
 
   .chat-header {
-    @apply p-4;
+    @apply px-4 py-4;
   }
 
   .document-details {
@@ -162,6 +273,45 @@
   }
 
   .suggestions {
-    @apply p-4;
+    @apply hidden; // Hide suggestions on mobile to save space
+  }
+
+  .header-actions {
+    @apply gap-2 hidden; // Hide header upload button on mobile, use floating button instead
+  }
+}
+
+// Small mobile screens
+@media (max-width: 480px) {
+  .chat-header {
+    @apply px-3 py-3;
+  }
+
+  .document-details {
+    h1 {
+      @apply text-base;
+    }
+  }
+
+  .suggestions {
+    @apply hidden; // Also hide on small mobile
+  }
+}
+
+// Landscape mobile optimization
+@media (max-width: 768px) and (orientation: landscape) {
+  .main-content {
+    @apply flex-row;
+  }
+
+  .chat-section {
+    @apply flex-[1.2] border-r border-white/10 rounded-none;
+    min-height: auto;
+  }
+
+  .pdf-section {
+    @apply flex-1 rounded-none border-0;
+    height: auto;
+    border-top: none;
   }
 }
