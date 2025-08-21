@@ -1,27 +1,23 @@
+// FORCE REBUILD - Railway deployment fix
 const { ChromaClient } = require('chromadb');
 const { chunkText } = require('./pdfService');
 const { generateEmbeddings } = require('./embeddingService');
 
 class VectorService {
   constructor() {
-    // Use different approaches for production vs development
+    // ALWAYS USE IN-MEMORY MODE - NO CHROMADB SERVER NEEDED
+    console.log(`🚀 VectorService: FORCED IN-MEMORY MODE - NO CHROMADB`);
     console.log(`🔧 VectorService: NODE_ENV = ${process.env.NODE_ENV}`);
 
-    if (process.env.NODE_ENV === 'production' || true) { // Force in-memory for now
-      // Use in-memory storage for production (no ChromaDB server needed)
-      console.log(`🧠 VectorService: Using in-memory storage for production`);
-      this.useInMemory = true;
-      this.memoryStore = new Map(); // Simple in-memory vector store
-      this.client = null;
-    } else {
-      console.log(`🔗 VectorService: Using ChromaDB for development`);
-      this.useInMemory = false;
-      this.client = new ChromaClient({
-        path: process.env.CHROMA_URL || 'http://localhost:8000'
-      });
-    }
+    // Force in-memory storage for ALL environments
+    this.useInMemory = true;
+    this.memoryStore = new Map(); // Simple in-memory vector store
+    this.client = null; // No ChromaDB client needed
+
     this.collectionName = 'pdf_documents';
     this.collection = null;
+
+    console.log(`✅ VectorService: Initialized with in-memory storage`);
   }
 
   /**

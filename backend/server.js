@@ -182,9 +182,11 @@ process.on('SIGINT', () => {
 app.listen(PORT, () => {
   console.log(`🚀 AI PDF Chat Backend running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🕐 Deployment Time: ${new Date().toISOString()}`);
+  console.log(`🧠 Vector Storage: IN-MEMORY MODE (No ChromaDB server needed)`);
 
-  const chromaMode = process.env.NODE_ENV === 'production' ? 'In-Memory (Non-Persistent)' : (process.env.CHROMA_URL || 'http://localhost:8000');
-  console.log(`🔗 Chroma DB: ${chromaMode}`);
+  const chromaMode = 'In-Memory Vector Storage';
+  console.log(`🔗 Vector DB: ${chromaMode}`);
 });
 
 module.exports = app;
