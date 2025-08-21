@@ -55,43 +55,69 @@ if (process.env.NODE_ENV === 'production') {
   const path = require('path');
   const fs = require('fs');
 
-  // Debug: Check what files exist
-  const distPath = path.join(__dirname, '../frontend/dist');
-  const appPath = path.join(__dirname, '../frontend/dist/ai-pdf-app');
+  // Try multiple possible build locations
+  const possiblePaths = [
+    path.join(__dirname, '../frontend/dist/ai-pdf-app'),
+    path.join(__dirname, '../frontend/dist'),
+    path.join(__dirname, '../dist/ai-pdf-app'),
+    path.join(__dirname, '../dist')
+  ];
+
+  let staticPath = null;
+  let indexPath = null;
 
   console.log('🔍 Checking build files...');
-  console.log('Dist path exists:', fs.existsSync(distPath));
-  console.log('App path exists:', fs.existsSync(appPath));
 
-  if (fs.existsSync(distPath)) {
-    console.log('Dist contents:', fs.readdirSync(distPath));
-  }
-  if (fs.existsSync(appPath)) {
-    console.log('App contents:', fs.readdirSync(appPath));
-  }
+  for (const testPath of possiblePaths) {
+    console.log(`Testing path: ${testPath}`);
+    if (fs.existsSync(testPath)) {
+      console.log(`✅ Path exists: ${testPath}`);
+      console.log(`Contents:`, fs.readdirSync(testPath));
 
-  app.use(express.static(appPath));
-
-  // Handle Angular routing - send all non-API requests to index.html
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
-      const indexPath = path.join(appPath, 'index.html');
-      if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-      } else {
-        res.status(500).json({
-          success: false,
-          message: `Frontend build not found. Checked: ${indexPath}`
-        });
+      const testIndexPath = path.join(testPath, 'index.html');
+      if (fs.existsSync(testIndexPath)) {
+        console.log(`✅ Found index.html at: ${testIndexPath}`);
+        staticPath = testPath;
+        indexPath = testIndexPath;
+        break;
       }
     } else {
-      // API route not found
-      res.status(404).json({
-        success: false,
-        message: 'API route not found'
-      });
+      console.log(`❌ Path not found: ${testPath}`);
     }
-  });
+  }
+
+  if (staticPath && indexPath) {
+    console.log(`🚀 Serving static files from: ${staticPath}`);
+    app.use(express.static(staticPath));
+
+    // Handle Angular routing
+    app.get('*', (req, res) => {
+      if (!req.path.startsWith('/api')) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).json({
+          success: false,
+          message: 'API route not found'
+        });
+      }
+    });
+  } else {
+    console.log('❌ No Angular build found in any expected location');
+    app.get('*', (req, res) => {
+      if (!req.path.startsWith('/api')) {
+        res.status(500).json({
+          success: false,
+          message: 'Frontend build not found. Check build logs.',
+          searchedPaths: possiblePaths
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: 'API route not found'
+        });
+      }
+    });
+  }
 } else {
   // 404 handler for development
   app.use('*', (req, res) => {
