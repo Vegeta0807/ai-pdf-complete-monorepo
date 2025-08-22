@@ -1,0 +1,18 @@
+{
+  "name": "AI PDF Chat",
+  "short_name": "AI PDF Chat",
+  "description": "Chat with your PDF documents using AI",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#8b5cf6",
+  "background_color": "#1a1a1a",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "16x16 32x32",
+      "type": "image/x-icon"
+    }
+  ]
+}

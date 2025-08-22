@@ -29,11 +29,6 @@
               {
                 "glob": "**/*",
                 "input": "public"
-              },
-              {
-                "glob": "**/*",
-                "input": "node_modules/ngx-extended-pdf-viewer/assets/",
-                "output": "/assets/"
               }
             ],
             "styles": [
@@ -63,7 +58,7 @@
                   "with": "src/environments/environment.prod.ts"
                 }
               ]
-            }
+            },
             "development": {
               "optimization": false,
               "extractLicenses": false,
@@ -100,11 +95,6 @@
               {
                 "glob": "**/*",
                 "input": "public"
-              },
-              {
-                "glob": "**/*",
-                "input": "node_modules/ngx-extended-pdf-viewer/assets/",
-                "output": "/assets/"
               }
             ],
             "styles": [
