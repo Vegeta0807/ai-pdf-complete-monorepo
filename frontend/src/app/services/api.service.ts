@@ -68,15 +68,12 @@ export class ApiService {
    * Upload PDF file to backend
    */
   uploadPdf(file: File): Observable<UploadResponse> {
-    console.log('API Service: Uploading file to backend:', file.name); // Debug log
     const formData = new FormData();
     formData.append('pdf', file);
 
-    console.log('API Service: Making POST request to:', `${this.baseUrl}/pdf/upload`); // Debug log
     return this.http.post<ApiResponse<UploadResponse>>(`${this.baseUrl}/pdf/upload`, formData)
       .pipe(
         map(response => {
-          console.log('API Service: Backend response:', response); // Debug log
           if (response.success && response.data) {
             return response.data;
           }
@@ -142,7 +139,6 @@ export class ApiService {
    * Handle HTTP errors
    */
   private handleError = (error: any): Observable<never> => {
-    console.error('API Error:', error);
     
     let errorMessage = 'An unexpected error occurred';
     

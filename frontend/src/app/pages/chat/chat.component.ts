@@ -39,12 +39,16 @@ export class ChatComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    this.fileSubscription = this.pdfState.file$.subscribe(file => {
-      this.handleFileChange(file);
-    });
+    // Add safety check for pdfState service
+    if (this.pdfState && this.pdfState.file$) {
+      this.fileSubscription = this.pdfState.file$.subscribe(file => {
+        this.handleFileChange(file);
+      });
+    }
 
     // Subscribe to PDF state changes to track upload progress
-    this.stateSubscription = this.pdfState.state$.subscribe(state => {
+    if (this.pdfState && this.pdfState.state$) {
+      this.stateSubscription = this.pdfState.state$.subscribe(state => {
       this.isUploadingToApi = state.isUploading || state.isProcessing;
 
       // Update progress message based on processing stage
@@ -80,15 +84,19 @@ export class ChatComponent implements OnInit, OnDestroy {
 
       this.cdr.detectChanges();
     });
+    }
 
-    this.handleFileChange(this.pdfState.file);
+    // Load current file if available
+    if (this.pdfState && this.pdfState.file !== undefined) {
+      this.handleFileChange(this.pdfState.file);
+    }
   }
 
   ngOnDestroy() {
-    if (this.fileSubscription) {
+    if (this.fileSubscription && typeof this.fileSubscription.unsubscribe === 'function') {
       this.fileSubscription.unsubscribe();
     }
-    if (this.stateSubscription) {
+    if (this.stateSubscription && typeof this.stateSubscription.unsubscribe === 'function') {
       this.stateSubscription.unsubscribe();
     }
   }
@@ -97,7 +105,16 @@ export class ChatComponent implements OnInit, OnDestroy {
     if (file) {
       const reader = new FileReader();
       reader.onload = () => {
-        this.pdfSrc = new Uint8Array(reader.result as ArrayBuffer);
+        if (reader.result && reader.result instanceof ArrayBuffer) {
+          this.pdfSrc = new Uint8Array(reader.result);
+          this.zone.run(() => {
+            this.cdr.detectChanges();
+            this.cdr.markForCheck();
+          });
+        }
+      };
+      reader.onerror = () => {
+        this.pdfSrc = null;
         this.zone.run(() => {
           this.cdr.detectChanges();
           this.cdr.markForCheck();

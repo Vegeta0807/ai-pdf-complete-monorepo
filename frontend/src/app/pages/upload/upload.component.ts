@@ -52,11 +52,9 @@ export class UploadComponent {
     // Upload to backend and navigate to chat when successful
     this.pdfState.uploadPdf(file).subscribe({
       next: (response) => {
-        console.log('PDF uploaded successfully from upload page:', response);
         this.router.navigate(['/chat']);
       },
       error: (error) => {
-        console.error('PDF upload failed from upload page:', error);
         // Stay on upload page if upload fails
       }
     });

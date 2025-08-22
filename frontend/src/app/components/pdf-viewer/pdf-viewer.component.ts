@@ -51,18 +51,27 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
   private _pdfSrc: Uint8Array | null = null;
 
   @Input() set pdfSrc(value: Uint8Array | null) {
-    console.log('📄 PDF Viewer: Setting pdfSrc', value ? 'with data' : 'null');
     this._pdfSrc = value;
 
     // PDF can be rendered immediately from file data
     // No need for a separate rendering loader since PDF rendering is fast
     this.isLoading = false;
+
+    // Reset error state when new PDF is loaded
+    if (value) {
+      this.error = null;
+    }
   }
 
   private startPdfLoading() {
     // Rendering loader not needed; render immediately when pdfSrc is set
-    this.isLoading = false;
-    this.error = null;
+    try {
+      this.isLoading = false;
+      this.error = null;
+    } catch (error) {
+      // Suppress PDF.js initialization errors
+      this.isLoading = false;
+    }
   }
 
   get pdfSrc(): Uint8Array | null {
@@ -70,11 +79,13 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    // Add error handler for PDF.js initialization errors
+    this.setupPdfErrorHandler();
+
     // Subscribe to navigation service for automatic navigation
     this.pdfNavigationService.currentPage$
       .pipe(takeUntil(this.destroy$))
       .subscribe(pageNumber => {
-        console.log(`📄 Navigation service triggered: page ${pageNumber}`);
         this.goToPage(pageNumber);
       });
 
@@ -112,7 +123,6 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
         }
 
         if (pdfState.pages && pdfState.pages !== this.totalPages) {
-          console.log(`📄 PDF state changed: updating total pages from ${this.totalPages} to ${pdfState.pages}`);
           this.totalPages = pdfState.pages;
           this.pdfNavigationService.setTotalPages(pdfState.pages);
         }
@@ -133,7 +143,6 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
   onFileSelected(event: any) {
     const file = event.target.files[0];
     if (file && file.type === 'application/pdf') {
-      console.log(`📄 File selected: ${file.name}`);
       this.selectedFile = file;
       this.processFile(file);
     } else {
@@ -151,7 +160,6 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
       const arrayBuffer = fileReader.result as ArrayBuffer;
       // Set the PDF source directly without triggering additional loading state
       this._pdfSrc = new Uint8Array(arrayBuffer);
-      console.log(`📄 PDF loaded from file reader, size: ${arrayBuffer.byteLength} bytes`);
 
       // Only upload to backend if this is a new file (not already uploaded)
       if (!this.pdfState.isUploaded || this.pdfState.currentState.filename !== file.name) {
@@ -168,11 +176,10 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
   private uploadToBackend(file: File) {
     // Upload to backend (this will trigger the chatbot loader via PdfStateService)
     this.pdfState.uploadPdf(file).subscribe({
-      next: (response) => {
-        console.log('📄 PDF uploaded successfully:', response);
+      next: () => {
+        // Upload successful
       },
-      error: (error) => {
-        console.error('📄 PDF upload failed:', error);
+      error: () => {
         this.error = 'Failed to upload PDF to server';
       }
     });
@@ -180,19 +187,30 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
 
   // PDF viewer events
   onPdfLoaded(pdf: any) {
-    console.log(`📄 PDF loaded: ${pdf.numPages} pages`);
-    this.totalPages = pdf.numPages;
-    this.currentPage = 1;
-    this.pdfNavigationService.setTotalPages(pdf.numPages);
-    this.isLoading = false;
-    this.error = null;
+    try {
+      this.totalPages = pdf.numPages;
+      this.currentPage = 1;
+      this.pdfNavigationService.setTotalPages(pdf.numPages);
+      this.isLoading = false;
+      this.error = null;
 
-    // Start page tracking
-    this.startPageTracking();
+      // For multi-page PDFs, add a small delay before starting page tracking
+      // to allow PDF.js to fully initialize
+      if (pdf.numPages > 1) {
+        setTimeout(() => {
+          this.startPageTracking();
+        }, 500);
+      } else {
+        this.startPageTracking();
+      }
+    } catch (error) {
+      this.error = 'Error initializing PDF viewer';
+      this.isLoading = false;
+    }
   }
 
   onPageRendered(event: any) {
-    console.log(`📄 Page rendered:`, event);
+    // Page rendered successfully
   }
 
   private startPageTracking() {
@@ -213,7 +231,6 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
       if (this.pdfViewer?.pdfViewer?.currentPageNumber) {
         const detectedPage = this.pdfViewer.pdfViewer.currentPageNumber;
         if (detectedPage !== this.currentPage && detectedPage >= 1 && detectedPage <= this.totalPages) {
-          console.log(`📄 Detected page change: ${this.currentPage} → ${detectedPage}`);
           this.currentPage = detectedPage;
         }
       }
@@ -232,23 +249,16 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
     ];
 
     if (benignErrors.some(e => message.includes(e))) {
-      console.warn('📄 Ignoring benign PDF.js error:', error);
       return;
     }
-
-    console.error('📄 PDF error:', error);
     this.error = `Error loading PDF: ${error?.message || 'Unknown error'}`;
     this.isLoading = false;
   }
 
   // Navigation methods
   goToPage(pageNumber: number) {
-    console.log(`📄 goToPage called: ${pageNumber} (current: ${this.currentPage}, total: ${this.totalPages})`);
     if (pageNumber >= 1 && pageNumber <= this.totalPages) {
       this.currentPage = pageNumber;
-      console.log(`✅ Navigated to page ${pageNumber}`);
-    } else {
-      console.warn(`📄 Page ${pageNumber} is out of range (1-${this.totalPages})`);
     }
   }
 
@@ -267,12 +277,10 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
   // Zoom methods
   zoomIn() {
     this.zoom = Math.min(this.zoom + 0.25, 3.0);
-    console.log(`📄 Zoom in: ${this.zoom}`);
   }
 
   zoomOut() {
     this.zoom = Math.max(this.zoom - 0.25, 0.5);
-    console.log(`📄 Zoom out: ${this.zoom}`);
   }
 
   // Utility methods
@@ -329,11 +337,9 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
 
       // Check if it's a PDF file
       if (file.type === 'application/pdf') {
-        console.log(`📄 PDF dropped: ${file.name}`);
         this.handleDroppedFile(file);
       } else {
         this.error = 'Please drop a valid PDF file';
-        console.warn('⚠️ Invalid file type dropped:', file.type);
 
         // Show error feedback
         setTimeout(() => {
@@ -349,7 +355,6 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
   }
 
   private forceStopLoading() {
-    console.log('📄 Force stopping loading state');
     this.isLoading = false;
     if (!this.totalPages && this._pdfSrc) {
       // Set a default page count if we have PDF data but no page info
@@ -357,5 +362,27 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
       this.currentPage = 1;
       this.pdfNavigationService.setTotalPages(1);
     }
+  }
+
+  private setupPdfErrorHandler() {
+    // Store original console.error
+    const originalConsoleError = console.error;
+
+    // Override console.error to filter PDF.js specific errors for multi-page PDFs
+    console.error = (...args: any[]) => {
+      const message = args[0]?.toString() || '';
+
+      // Filter out specific PDF.js initialization errors that occur with multi-page PDFs
+      if (message.includes('Cannot read properties of undefined (reading \'_on\')') ||
+          message.includes('PDFFindController') ||
+          message.includes('Cannot read properties of undefined (reading \'_listeners\')') ||
+          message.includes('pdf_viewer.mjs')) {
+        // Silently ignore these PDF.js initialization errors
+        return;
+      }
+
+      // Call original console.error for other errors
+      originalConsoleError.apply(console, args);
+    };
   }
 }

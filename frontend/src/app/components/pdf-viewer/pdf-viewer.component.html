@@ -128,6 +128,8 @@
         [zoom]="zoom"
         [show-all]="true"
         [fit-to-page]="false"
+        [stick-to-page]="false"
+        [autoresize]="true"
         (after-load-complete)="onPdfLoaded($event)"
         (page-rendered)="onPageRendered($event)"
         (error)="onPdfError($event)"

@@ -243,8 +243,6 @@ What would you like to know about your document?`;
           this.isTyping = false;
           this.isLoading = false;
 
-          console.error('Chat API error:', error);
-
           const errorMessage: ChatMessage = {
             id: this.generateId(),
             content: `Sorry, I encountered an error: ${error.message}. Please try again.`,
@@ -314,7 +312,6 @@ What would you like to know about your document?`;
    * Navigate to a specific page when a citation is clicked
    */
   onCitationClick(citation: Citation): void {
-    console.log('🔗 Citation clicked:', citation);
 
     // Emit citation click to parent component (for mobile PDF viewer)
     this.citationClicked.emit(citation);

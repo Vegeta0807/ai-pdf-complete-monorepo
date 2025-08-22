@@ -18,13 +18,9 @@ export class PdfNavigationService {
    * @param pageNumber - The page number to navigate to
    */
   navigateToPage(pageNumber: number): void {
-    console.log(`🔗 Navigation service: navigateToPage(${pageNumber}), total pages: ${this.totalPagesSubject.value}`);
     if (pageNumber >= 1 && pageNumber <= this.totalPagesSubject.value) {
-      console.log(`🔗 Navigation service: Emitting page ${pageNumber}`);
       this.currentPageSubject.next(pageNumber);
       this.scrollToPdfPage(pageNumber);
-    } else {
-      console.warn(`🔗 Navigation service: Page ${pageNumber} out of range (1-${this.totalPagesSubject.value})`);
     }
   }
 
@@ -33,7 +29,6 @@ export class PdfNavigationService {
    * @param totalPages - Total number of pages
    */
   setTotalPages(totalPages: number): void {
-    console.log(`🔗 Navigation service: setTotalPages(${totalPages})`);
     this.totalPagesSubject.next(totalPages);
   }
 
@@ -63,10 +58,8 @@ export class PdfNavigationService {
         // For PDF iframes, we can append #page=X to navigate to a specific page
         const baseUrl = iframe.src.split('#')[0];
         iframe.src = `${baseUrl}#page=${pageNumber}`;
-        console.log(`🔗 Navigated PDF iframe to page ${pageNumber}`);
         return;
       } catch (error) {
-        console.warn('Could not navigate iframe to page:', error);
       }
     }
 
@@ -74,7 +67,6 @@ export class PdfNavigationService {
     const pdfPage = document.querySelector(`[data-page-number="${pageNumber}"]`);
     if (pdfPage) {
       pdfPage.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      console.log(`📄 Scrolled to PDF.js page ${pageNumber}`);
       return;
     }
 
@@ -93,7 +85,6 @@ export class PdfNavigationService {
         top: targetScroll,
         behavior: 'smooth'
       });
-      console.log(`📜 Estimated scroll to page ${pageNumber}`);
     }
   }
 
@@ -104,10 +95,10 @@ export class PdfNavigationService {
    */
   highlightArea(pageNumber: number, coordinates?: { x: number, y: number, width: number, height: number }): void {
     this.navigateToPage(pageNumber);
-    
+
     // Future enhancement: Add highlighting functionality
     if (coordinates) {
-      console.log(`Would highlight area on page ${pageNumber}:`, coordinates);
+      // Highlighting functionality to be implemented
     }
   }
 }

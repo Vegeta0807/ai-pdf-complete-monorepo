@@ -76,7 +76,6 @@ export class PdfStateService {
    * Upload PDF file to backend
    */
   uploadPdf(file: File): Observable<UploadResponse> {
-    console.log('PDF State Service: Starting upload for', file.name); // Debug log
     this.updateState({
       file,
       filename: file.name,
@@ -89,7 +88,6 @@ export class PdfStateService {
 
     return this.apiService.uploadPdf(file).pipe(
       tap(response => {
-        console.log('PDF State Service: Upload successful, updating state with documentId:', response.documentId); // Debug log
         this.updateState({
           pdfId: response.documentId, // Map documentId to pdfId for internal use
           pages: response.numPages || response.chunksCreated, // Use numPages from backend, fallback to chunksCreated
@@ -99,10 +97,8 @@ export class PdfStateService {
           uploadError: null,
           processingStage: 'complete'
         });
-        console.log('PDF State Service: New state:', this.currentState); // Debug log
       }),
       catchError(error => {
-        console.error('PDF State Service: Upload failed:', error); // Debug log
         this.updateState({
           isUploading: false,
           isProcessing: false,

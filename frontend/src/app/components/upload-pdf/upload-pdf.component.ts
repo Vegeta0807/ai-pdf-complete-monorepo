@@ -117,16 +117,14 @@ export class UploadPdfComponent implements OnInit, OnDestroy {
    * Upload file to backend
    */
   private uploadFile(file: File): void {
-    console.log('Starting upload for file:', file.name); // Debug log
     this.pdfStateService.uploadPdf(file)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          console.log('Upload successful:', response);
-          console.log('PDF ID received:', response.pdfId); // Debug log
+          // Upload successful
         },
         error: (error) => {
-          console.error('Upload failed:', error);
+          // Upload failed
         }
       });
   }
