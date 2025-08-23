@@ -114,8 +114,9 @@ export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
         this.pdfId = state.pdfId;
         this.isUploading = state.isUploading || state.isProcessing;
 
-        // Handle upload completion - only show completion message if PDF is visible
-        if (wasUploading && !state.isUploading && state.isUploaded && state.pdfId && this.pdfSrc) {
+        // Handle processing completion - only show completion message when processing is fully done
+        if (wasUploading && !state.isUploading && state.isUploaded && state.pdfId && this.pdfSrc &&
+            !state.isProcessing && state.processingStage === 'complete') {
           this.handleUploadComplete(state);
         }
 
@@ -210,6 +211,29 @@ What would you like to know about your document?`;
     // Check if PDF is uploaded
     if (!this.pdfId) {
       this.snackBar.open('Please upload a PDF first to start chatting!', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Check if PDF is still processing
+    const pdfState = this.pdfStateService.currentState;
+    if (pdfState.isProcessing) {
+      let processingMessage = 'Your document is still being processed. Please wait...';
+
+      switch (pdfState.processingStage) {
+        case 'uploading':
+          processingMessage = 'Your document is being uploaded. Please wait...';
+          break;
+        case 'parsing':
+          processingMessage = 'Your document is being processed. Please wait...';
+          break;
+        case 'vectorizing':
+          processingMessage = 'Creating embeddings for your document. Almost ready...';
+          break;
+        default:
+          processingMessage = 'Your document is still being processed. Please wait...';
+      }
+
+      this.snackBar.open(processingMessage, 'Close', { duration: 4000 });
       return;
     }
 
@@ -400,7 +424,14 @@ What would you like to know about your document?`;
     let errorType: ErrorState['errorType'] = 'unknown';
     let errorMessage = 'An unexpected error occurred';
 
-    if (error.name === 'TimeoutError') {
+    // Check for document processing errors first
+    if (error.message?.includes('DOCUMENT_PROCESSING') || error.message?.includes('still being processed')) {
+      errorType = 'processing';
+      errorMessage = error.message || 'Your document is still being processed. Please wait...';
+    } else if (error.message?.includes('DOCUMENT_NOT_FOUND')) {
+      errorType = 'upload';
+      errorMessage = 'Document not found. Please upload a PDF first.';
+    } else if (error.name === 'TimeoutError') {
       errorType = 'timeout';
       errorMessage = 'Request timed out. The AI service may be busy.';
     } else if (error.status === 0) {

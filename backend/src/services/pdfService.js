@@ -32,21 +32,52 @@ async function processPDFLocal(filePath, options = {}) {
     // Enhanced text processing for financial documents
     let processedText = data.text;
 
-    // Preserve table structure by maintaining spacing
-    processedText = processedText
-      // Normalize line breaks but preserve structure
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      // Preserve multiple spaces that might indicate table columns
-      .replace(/[ ]{2,}/g, (match) => ' '.repeat(Math.min(match.length, 8)))
-      // Ensure proper spacing around numbers and dates (important for financial data)
-      .replace(/(\d+\.?\d*)\s*([A-Za-z])/g, '$1 $2')
-      .replace(/([A-Za-z])\s*(\d+\.?\d*)/g, '$1 $2')
-      // Preserve currency symbols and amounts
-      .replace(/(\$|€|£|¥)\s*(\d)/g, '$1$2')
-      // Clean up excessive whitespace while preserving structure
-      .replace(/\n\s*\n\s*\n/g, '\n\n')
-      .trim();
+    // Detect if this is likely a bank statement or financial document
+    const isFinancialDoc = /(\$|€|£|¥|\d+\.\d{2}|balance|transaction|account|statement|payment|deposit|withdrawal|credit|debit)/gi.test(processedText.substring(0, 2000));
+
+    if (isFinancialDoc) {
+      console.log('📊 Detected financial document - applying enhanced text processing');
+
+      // Enhanced processing for financial documents
+      processedText = processedText
+        // Normalize line breaks but preserve structure
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        // Preserve table structure by maintaining spacing for financial data
+        .replace(/[ ]{3,}/g, (match) => ' '.repeat(Math.min(match.length, 10)))
+        // Ensure proper spacing around monetary amounts
+        .replace(/(\$|€|£|¥)\s*(\d)/g, '$1$2')
+        .replace(/(\d+\.\d{2})\s*(CR|DR|debit|credit)/gi, '$1 $2')
+        // Preserve date formats common in bank statements
+        .replace(/(\d{1,2}\/\d{1,2}\/\d{2,4})/g, ' $1 ')
+        .replace(/(\d{4}-\d{2}-\d{2})/g, ' $1 ')
+        .replace(/(\d{2}-\d{2}-\d{4})/g, ' $1 ')
+        // Ensure proper spacing around transaction descriptions
+        .replace(/(\d+\.?\d*)\s*([A-Za-z])/g, '$1 $2')
+        .replace(/([A-Za-z])\s*(\d+\.?\d*)/g, '$1 $2')
+        // Preserve account numbers and reference numbers
+        .replace(/([A-Z]{2,})\s*(\d{4,})/g, '$1 $2')
+        // Clean up excessive whitespace while preserving financial structure
+        .replace(/\n\s*\n\s*\n/g, '\n\n')
+        .replace(/[ ]{2}/g, ' ')
+        .trim();
+    } else {
+      // Standard text processing for non-financial documents
+      processedText = processedText
+        // Normalize line breaks but preserve structure
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        // Preserve multiple spaces that might indicate table columns
+        .replace(/[ ]{2,}/g, (match) => ' '.repeat(Math.min(match.length, 8)))
+        // Ensure proper spacing around numbers and dates
+        .replace(/(\d+\.?\d*)\s*([A-Za-z])/g, '$1 $2')
+        .replace(/([A-Za-z])\s*(\d+\.?\d*)/g, '$1 $2')
+        // Preserve currency symbols and amounts
+        .replace(/(\$|€|£|¥)\s*(\d)/g, '$1$2')
+        // Clean up excessive whitespace while preserving structure
+        .replace(/\n\s*\n\s*\n/g, '\n\n')
+        .trim();
+    }
 
     console.log(`📊 Text processing: ${data.text.length} → ${processedText.length} characters`);
     if (onProgress) onProgress(90, 'Finalizing processing...');
@@ -278,13 +309,34 @@ function chunkText(text, chunkSize = 1500, overlap = 300, totalPages = 1) {
 
   console.log(`📊 Enhanced chunking: ${text.length} chars, ${totalPages} pages, ${Math.round(avgCharsPerPage)} chars/page`);
 
-  // Detect if this looks like a financial document
-  const isFinancialDoc = /(\$|€|£|¥|\d+\.\d{2}|balance|transaction|account|statement|payment|deposit|withdrawal)/gi.test(text.substring(0, 2000));
+  // Enhanced financial document detection
+  const financialKeywords = [
+    'balance', 'transaction', 'account', 'statement', 'payment', 'deposit', 'withdrawal',
+    'credit', 'debit', 'transfer', 'fee', 'interest', 'overdraft', 'available balance',
+    'current balance', 'previous balance', 'beginning balance', 'ending balance',
+    'account number', 'routing number', 'statement period', 'transaction date',
+    'description', 'amount', 'running balance', 'merchant', 'payee', 'check number'
+  ];
+
+  const hasFinancialKeywords = financialKeywords.some(keyword =>
+    text.toLowerCase().includes(keyword.toLowerCase())
+  );
+
+  const hasMonetaryAmounts = /(\$|€|£|¥)\s*\d+\.\d{2}|\d+\.\d{2}\s*(CR|DR|debit|credit)/gi.test(text.substring(0, 3000));
+  const hasDatePatterns = /\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}/g.test(text.substring(0, 2000));
+  const hasAccountNumbers = /account\s*#?\s*\d{4,}|acct\s*#?\s*\d{4,}/gi.test(text.substring(0, 2000));
+
+  const isFinancialDoc = hasFinancialKeywords && (hasMonetaryAmounts || hasDatePatterns || hasAccountNumbers);
 
   if (isFinancialDoc) {
     console.log('📊 Detected financial document - using enhanced chunking strategy');
-    chunkSize = 2000; // Larger chunks for financial data
-    overlap = 400;    // More overlap to preserve transaction context
+    console.log(`   - Financial keywords: ${hasFinancialKeywords}`);
+    console.log(`   - Monetary amounts: ${hasMonetaryAmounts}`);
+    console.log(`   - Date patterns: ${hasDatePatterns}`);
+    console.log(`   - Account numbers: ${hasAccountNumbers}`);
+
+    chunkSize = 2500; // Larger chunks for financial data to preserve transaction context
+    overlap = 500;    // More overlap to preserve transaction relationships
   }
 
   while (start < text.length) {
@@ -299,27 +351,66 @@ function chunkText(text, chunkSize = 1500, overlap = 300, totalPages = 1) {
       const lastNewline = text.lastIndexOf('\n', end);
       const lastDoubleNewline = text.lastIndexOf('\n\n', end);
 
-      // For financial docs, also look for transaction boundaries
+      // Enhanced break point detection for financial documents
       if (isFinancialDoc) {
-        // Look for date patterns (common in statements)
-        const datePattern = /\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}/g;
-        let match;
-        while ((match = datePattern.exec(text.substring(Math.max(0, end - 500), end + 100))) !== null) {
-          const actualPos = Math.max(0, end - 500) + match.index;
-          if (actualPos > start + chunkSize * 0.3 && actualPos < end) {
-            breakPoints.push(actualPos);
-          }
-        }
+        // Look for transaction date patterns (common in bank statements)
+        const datePatterns = [
+          /\d{1,2}\/\d{1,2}\/\d{2,4}/g,  // MM/DD/YYYY or M/D/YY
+          /\d{4}-\d{2}-\d{2}/g,          // YYYY-MM-DD
+          /\d{2}-\d{2}-\d{4}/g,          // DD-MM-YYYY
+          /\d{2}\/\d{2}\/\d{4}/g         // DD/MM/YYYY
+        ];
 
-        // Look for amount patterns (transaction amounts)
-        const amountPattern = /\$\d+\.\d{2}|\d+\.\d{2}\s*(CR|DR|debit|credit)/gi;
-        let amountMatch;
-        while ((amountMatch = amountPattern.exec(text.substring(Math.max(0, end - 300), end + 100))) !== null) {
-          const actualPos = Math.max(0, end - 300) + amountMatch.index + amountMatch[0].length;
-          if (actualPos > start + chunkSize * 0.3 && actualPos < end) {
-            breakPoints.push(actualPos);
+        datePatterns.forEach(pattern => {
+          let match;
+          const searchText = text.substring(Math.max(0, end - 600), end + 200);
+          while ((match = pattern.exec(searchText)) !== null) {
+            const actualPos = Math.max(0, end - 600) + match.index;
+            if (actualPos > start + chunkSize * 0.2 && actualPos < end) {
+              breakPoints.push(actualPos);
+            }
           }
-        }
+        });
+
+        // Look for monetary amount patterns (transaction amounts)
+        const amountPatterns = [
+          /\$\d+\.\d{2}/gi,                    // $123.45
+          /\d+\.\d{2}\s*(CR|DR)/gi,           // 123.45 CR/DR
+          /\d+\.\d{2}\s*(debit|credit)/gi,    // 123.45 debit/credit
+          /-?\$?\d{1,3}(,\d{3})*\.\d{2}/g     // -$1,234.56 or 1,234.56
+        ];
+
+        amountPatterns.forEach(pattern => {
+          let match;
+          const searchText = text.substring(Math.max(0, end - 400), end + 200);
+          while ((match = pattern.exec(searchText)) !== null) {
+            const actualPos = Math.max(0, end - 400) + match.index + match[0].length;
+            if (actualPos > start + chunkSize * 0.3 && actualPos < end) {
+              breakPoints.push(actualPos);
+            }
+          }
+        });
+
+        // Look for transaction description patterns
+        const transactionPatterns = [
+          /\n\s*\d{1,2}\/\d{1,2}\/\d{2,4}\s+/g,  // New line with date
+          /\n\s*[A-Z][A-Z\s&]+\s+\$?\d+\.\d{2}/g, // New line with merchant name and amount
+          /\n\s*CHECK\s*#?\s*\d+/gi,               // Check transactions
+          /\n\s*TRANSFER\s+/gi,                    // Transfer transactions
+          /\n\s*DEPOSIT\s+/gi,                     // Deposit transactions
+          /\n\s*WITHDRAWAL\s+/gi                   // Withdrawal transactions
+        ];
+
+        transactionPatterns.forEach(pattern => {
+          let match;
+          const searchText = text.substring(Math.max(0, end - 500), end + 100);
+          while ((match = pattern.exec(searchText)) !== null) {
+            const actualPos = Math.max(0, end - 500) + match.index;
+            if (actualPos > start + chunkSize * 0.2 && actualPos < end) {
+              breakPoints.push(actualPos);
+            }
+          }
+        });
       }
 
       // Add standard break points
@@ -337,12 +428,34 @@ function chunkText(text, chunkSize = 1500, overlap = 300, totalPages = 1) {
 
     const chunk = text.slice(start, end).trim();
     if (chunk.length > 0) {
-      // Conservative page estimation with accurate total pages
+      // Enhanced page estimation algorithm
+      const chunkStart = start;
+      const chunkEnd = end;
       const chunkMiddle = start + (end - start) / 2;
-      const rawPageEstimate = chunkMiddle / avgCharsPerPage;
 
-      // Use more conservative estimation
-      let estimatedPage = Math.max(1, Math.floor(rawPageEstimate) + 1);
+      // Calculate page estimates for start, middle, and end of chunk
+      const startPageEstimate = Math.max(1, Math.floor(chunkStart / avgCharsPerPage) + 1);
+      const middlePageEstimate = Math.max(1, Math.floor(chunkMiddle / avgCharsPerPage) + 1);
+      const endPageEstimate = Math.max(1, Math.floor(chunkEnd / avgCharsPerPage) + 1);
+
+      // Use the middle estimate as primary, but validate against start/end
+      let estimatedPage = middlePageEstimate;
+
+      // If chunk spans multiple pages, use the page where most content is
+      if (startPageEstimate !== endPageEstimate) {
+        // Calculate which page has more content in this chunk
+        const startPageEnd = startPageEstimate * avgCharsPerPage;
+        const endPageStart = (endPageEstimate - 1) * avgCharsPerPage;
+
+        const contentInStartPage = Math.max(0, Math.min(startPageEnd, chunkEnd) - chunkStart);
+        const contentInEndPage = Math.max(0, chunkEnd - Math.max(endPageStart, chunkStart));
+
+        if (contentInEndPage > contentInStartPage) {
+          estimatedPage = endPageEstimate;
+        } else {
+          estimatedPage = startPageEstimate;
+        }
+      }
 
       // Ensure we don't exceed actual page count
       estimatedPage = Math.min(estimatedPage, totalPages);
@@ -355,10 +468,17 @@ function chunkText(text, chunkSize = 1500, overlap = 300, totalPages = 1) {
         endChar: end,
         estimatedPage: estimatedPage,
         chunkIndex: chunks.length,
-        // Add financial document indicators
-        containsAmounts: /\$\d+\.\d{2}|\d+\.\d{2}\s*(CR|DR)/gi.test(chunk),
-        containsDates: /\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}/g.test(chunk),
-        isFinancialContent: isFinancialDoc
+        // Enhanced financial document indicators
+        containsAmounts: /\$\d+\.\d{2}|\d+\.\d{2}\s*(CR|DR)|(\$|€|£|¥)\s*\d{1,3}(,\d{3})*\.\d{2}/gi.test(chunk),
+        containsDates: /\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}/g.test(chunk),
+        containsTransactions: /transaction|payment|deposit|withdrawal|transfer|check|debit|credit/gi.test(chunk),
+        containsAccountInfo: /account\s*#?\s*\d{4,}|balance|statement\s+period/gi.test(chunk),
+        containsMerchantInfo: /[A-Z][A-Z\s&]{3,}\s+\$?\d+\.\d{2}/g.test(chunk),
+        isFinancialContent: isFinancialDoc,
+        // Transaction count estimation
+        transactionCount: (chunk.match(/\d{1,2}\/\d{1,2}\/\d{2,4}\s+.*?\$?\d+\.\d{2}/g) || []).length,
+        // Balance information
+        containsBalance: /balance|available|current|previous|beginning|ending/gi.test(chunk)
       };
 
       chunks.push(chunkMetadata);
@@ -367,15 +487,28 @@ function chunkText(text, chunkSize = 1500, overlap = 300, totalPages = 1) {
     start = end - overlap;
   }
 
-  // Debug: Log page distribution
+  // Enhanced debugging: Log page distribution and chunk analysis
   const pageDistribution = chunks.reduce((acc, chunk) => {
     acc[chunk.estimatedPage] = (acc[chunk.estimatedPage] || 0) + 1;
     return acc;
   }, {});
 
-  console.log(`📝 Text chunked into ${chunks.length} pieces with page estimates`);
+  // Calculate financial content statistics
+  const financialStats = {
+    chunksWithAmounts: chunks.filter(c => c.containsAmounts).length,
+    chunksWithDates: chunks.filter(c => c.containsDates).length,
+    chunksWithTransactions: chunks.filter(c => c.containsTransactions).length,
+    chunksWithAccountInfo: chunks.filter(c => c.containsAccountInfo).length,
+    totalTransactions: chunks.reduce((sum, c) => sum + (c.transactionCount || 0), 0)
+  };
+
+  console.log(`📝 Text chunked into ${chunks.length} pieces with enhanced page estimates`);
   console.log(`📊 Page distribution:`, pageDistribution);
   console.log(`📄 Total pages: ${totalPages}, Avg chars per page: ${Math.round(avgCharsPerPage)}`);
+
+  if (isFinancialDoc) {
+    console.log(`💰 Financial content analysis:`, financialStats);
+  }
 
   return chunks;
 }

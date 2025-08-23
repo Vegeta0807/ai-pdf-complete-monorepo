@@ -57,8 +57,13 @@ class MemoryVectorService {
         chunk_index: index,
         chunk_text: chunkObj.text.substring(0, 100) + '...',
         page_number: chunkObj.estimatedPage,
+        estimated_page: chunkObj.estimatedPage, // Ensure compatibility
         start_char: chunkObj.startChar,
         end_char: chunkObj.endChar,
+        num_pages: metadata.numPages || 1, // Add total pages for validation
+        contains_amounts: chunkObj.containsAmounts || false,
+        contains_dates: chunkObj.containsDates || false,
+        is_financial_content: chunkObj.isFinancialContent || false,
         ...metadata
       }));
 

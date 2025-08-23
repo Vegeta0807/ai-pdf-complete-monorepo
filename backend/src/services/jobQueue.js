@@ -1,5 +1,6 @@
 const EventEmitter = require('events');
 const { v4: uuidv4 } = require('uuid');
+const { documentStatusService, STATUS } = require('../services/documentStatusService');
 
 class JobQueue extends EventEmitter {
   constructor() {
@@ -50,9 +51,14 @@ class JobQueue extends EventEmitter {
     if (job) {
       job.progress = Math.min(100, Math.max(0, progress));
       if (message) job.statusMessage = message;
-      
+
       console.log(`📊 Job ${jobId} progress: ${job.progress}%${message ? ` - ${message}` : ''}`);
       this.emit('progress', { jobId, progress: job.progress, message });
+
+      // Update document status if this is a PDF processing job
+      if (job.type === 'pdf_processing' && job.documentId) {
+        documentStatusService.updateProgress(job.documentId, job.progress, message);
+      }
     }
   }
 
@@ -66,11 +72,23 @@ class JobQueue extends EventEmitter {
       job.progress = 100;
       job.completedAt = new Date();
       job.result = result;
-      
+
       this.processing.delete(jobId);
       console.log(`✅ Job ${jobId} completed`);
       this.emit('completed', { jobId, result });
-      
+
+      // Mark document as completed if this is a PDF processing job
+      if (job.type === 'pdf_processing' && job.documentId) {
+        documentStatusService.markCompleted(job.documentId, {
+          filename: job.filename,
+          fileSize: job.fileSize,
+          numPages: result.numPages,
+          chunksCreated: result.chunksCreated,
+          processingTime: result.processingTime,
+          jobId: jobId
+        });
+      }
+
       // Process next job in queue
       this.processNext();
     }
@@ -85,11 +103,16 @@ class JobQueue extends EventEmitter {
       job.status = 'failed';
       job.completedAt = new Date();
       job.error = error.message || error;
-      
+
       this.processing.delete(jobId);
       console.error(`❌ Job ${jobId} failed:`, error);
       this.emit('failed', { jobId, error: job.error });
-      
+
+      // Mark document as error if this is a PDF processing job
+      if (job.type === 'pdf_processing' && job.documentId) {
+        documentStatusService.markError(job.documentId, job.error);
+      }
+
       // Process next job in queue
       this.processNext();
     }
@@ -156,10 +179,20 @@ class JobQueue extends EventEmitter {
 
       this.updateProgress(job.id, 70, 'PDF processed, creating embeddings...');
 
+      // Update document status to vectorizing
+      if (job.documentId) {
+        documentStatusService.setStatus(job.documentId, STATUS.VECTORIZING, {
+          filename: job.filename,
+          fileSize: job.fileSize,
+          numPages: pdfResult.numPages,
+          textLength: pdfResult.text.length
+        });
+      }
+
       // Vectorize document
       const vectorResult = await vectorizeDocument(
-        job.documentId, 
-        pdfResult.text, 
+        job.documentId,
+        pdfResult.text,
         {
           filename: job.filename,
           uploadedAt: job.uploadedAt,

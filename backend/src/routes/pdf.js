@@ -3,9 +3,8 @@ const multer = require('multer');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const { uploadValidation } = require('../middleware/validation');
-const { processPDF } = require('../services/pdfService');
-const { vectorizeDocument } = require('../../services/vectorServiceSelector');
 const jobQueue = require('../services/jobQueue');
+const { documentStatusService, STATUS } = require('../services/documentStatusService');
 
 const router = express.Router();
 
@@ -51,9 +50,27 @@ router.post('/upload', upload.single('pdf'), uploadValidation, async (req, res) 
 
     console.log(`📄 Processing PDF: ${originalname} (${(size / 1024 / 1024).toFixed(2)}MB, ${pageCount} pages)`);
 
+    // Initialize document status tracking
+    documentStatusService.setStatus(documentId, STATUS.UPLOADED, {
+      filename: originalname,
+      fileSize: size,
+      numPages: pageCount,
+      isLargeDocument,
+      uploadedAt: new Date().toISOString()
+    });
+
     // For large documents (20+ pages), use background processing
     if (isLargeDocument) {
       console.log(`📋 Large document detected (${pageCount} pages), using background processing`);
+
+      // Update status to processing
+      documentStatusService.setStatus(documentId, STATUS.PROCESSING, {
+        filename: originalname,
+        fileSize: size,
+        numPages: pageCount,
+        isLargeDocument: true,
+        processingStartedAt: new Date().toISOString()
+      });
 
       const jobId = jobQueue.addJob({
         type: 'pdf_processing',
@@ -65,9 +82,10 @@ router.post('/upload', upload.single('pdf'), uploadValidation, async (req, res) 
         uploadedAt: new Date().toISOString()
       });
 
+      // Return immediately with processing status - frontend should poll for completion
       return res.json({
         success: true,
-        message: 'Large PDF queued for background processing',
+        message: 'PDF upload successful. Processing in background...',
         data: {
           documentId,
           jobId,
@@ -75,42 +93,63 @@ router.post('/upload', upload.single('pdf'), uploadValidation, async (req, res) 
           fileSize: size,
           numPages: pageCount,
           isBackgroundProcessing: true,
-          estimatedProcessingTime: Math.ceil(pageCount * 2) + ' seconds'
+          processingStatus: 'processing',
+          isProcessing: true,
+          estimatedProcessingTime: Math.ceil(pageCount * 2) + ' seconds',
+          statusCheckUrl: `/api/pdf/status/${documentId}`
         }
       });
     }
 
-    // For smaller documents, process immediately
-    console.log(`⚡ Small document (${pageCount} pages), processing immediately`);
+    // For smaller documents, process in background as well to avoid blocking the upload response
+    console.log(`⚡ Small document (${pageCount} pages), processing in background`);
 
-    // Process PDF and extract text with page information
-    const pdfResult = await processPDF(filePath);
-
-    // Vectorize and store in Chroma
-    const vectorResult = await vectorizeDocument(documentId, pdfResult.text, {
+    // Update status to processing
+    documentStatusService.setStatus(documentId, STATUS.PROCESSING, {
       filename: originalname,
-      uploadedAt: new Date().toISOString(),
       fileSize: size,
-      numPages: pdfResult.numPages,
-      pdfMetadata: pdfResult.metadata
+      numPages: pageCount,
+      isLargeDocument: false,
+      processingStartedAt: new Date().toISOString()
     });
 
+    // Process in background even for small documents to avoid blocking upload response
+    const jobId = jobQueue.addJob({
+      type: 'pdf_processing',
+      documentId,
+      filePath,
+      filename: originalname,
+      fileSize: size,
+      pageCount,
+      uploadedAt: new Date().toISOString()
+    });
+
+    // Return immediately with processing status - frontend should poll for completion
     res.json({
       success: true,
-      message: 'PDF uploaded and processed successfully',
+      message: 'PDF upload successful. Processing...',
       data: {
         documentId,
+        jobId,
         filename: originalname,
         fileSize: size,
-        numPages: pdfResult.numPages,
-        chunksCreated: vectorResult.chunksCreated,
-        processingTime: vectorResult.processingTime,
-        isBackgroundProcessing: false
+        numPages: pageCount,
+        isBackgroundProcessing: true,
+        processingStatus: 'processing',
+        isProcessing: true,
+        estimatedProcessingTime: Math.ceil(pageCount * 1) + ' seconds',
+        statusCheckUrl: `/api/pdf/status/${documentId}`
       }
     });
 
   } catch (error) {
     console.error('PDF upload error:', error);
+
+    // Mark document as error if we have a documentId
+    if (typeof documentId !== 'undefined') {
+      documentStatusService.markError(documentId, error.message);
+    }
+
     res.status(500).json({
       success: false,
       message: 'Failed to process PDF',
@@ -224,6 +263,95 @@ router.get('/queue/stats', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get queue statistics',
+      error: error.message
+    });
+  }
+});
+
+// Get document processing status
+router.get('/status/:documentId', async (req, res) => {
+  try {
+    const { documentId } = req.params;
+
+    const documentStatus = documentStatusService.getStatus(documentId);
+
+    if (!documentStatus) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found',
+        error: 'DOCUMENT_NOT_FOUND'
+      });
+    }
+
+    const isReady = documentStatusService.isReadyForChat(documentId);
+    const isProcessing = documentStatusService.isProcessing(documentId);
+
+    res.json({
+      success: true,
+      data: {
+        documentId,
+        status: documentStatus.status,
+        progress: documentStatus.progress || 0,
+        progressMessage: documentStatus.progressMessage || '',
+        isReady,
+        isProcessing,
+        timestamp: documentStatus.timestamp,
+        lastUpdated: documentStatus.lastUpdated,
+        metadata: {
+          filename: documentStatus.filename,
+          fileSize: documentStatus.fileSize,
+          numPages: documentStatus.numPages,
+          isLargeDocument: documentStatus.isLargeDocument
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Status check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check document status',
+      error: error.message
+    });
+  }
+});
+
+// Get job status (for background processing)
+router.get('/job/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    const job = jobQueue.getJob(jobId);
+
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found',
+        error: 'JOB_NOT_FOUND'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        jobId,
+        status: job.status,
+        progress: job.progress || 0,
+        statusMessage: job.statusMessage || '',
+        createdAt: job.createdAt,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt,
+        error: job.error,
+        result: job.result,
+        documentId: job.documentId
+      }
+    });
+
+  } catch (error) {
+    console.error('Job status check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check job status',
       error: error.message
     });
   }

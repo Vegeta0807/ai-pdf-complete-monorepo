@@ -11,7 +11,7 @@ import { Subject, takeUntil, interval, switchMap, takeWhile } from 'rxjs';
 import { PdfStateService, PdfState } from '../../services/pdf-state.service';
 import { ErrorFallbackComponent } from '../error-fallback/error-fallback.component';
 import { ErrorState, FallbackConfig } from '../../interfaces/error-state.interface';
-import { ApiService, JobStatus } from '../../services/api.service';
+import { ApiService, JobStatus, DocumentStatus } from '../../services/api.service';
 
 @Component({
   selector: 'app-upload-pdf',
@@ -163,8 +163,8 @@ export class UploadPdfComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          // Check if this is background processing
-          if (response.isBackgroundProcessing && response.jobId) {
+          // Check if this is background processing or still processing
+          if (response.isBackgroundProcessing || response.isProcessing) {
             this.handleBackgroundProcessing(response);
           } else {
             // Immediate processing completed
@@ -308,20 +308,51 @@ Please describe what happened when you tried to upload the file.
     this.currentJobId = response.jobId;
     this.estimatedTime = response.estimatedProcessingTime || 'Unknown';
     this.processingProgress = 0;
-    this.processingMessage = 'Queued for processing...';
+    this.processingMessage = response.isProcessing ? 'Processing...' : 'Queued for processing...';
 
-    this.snackBar.open(
-      `Large PDF queued for background processing. Estimated time: ${this.estimatedTime}`,
-      'OK',
-      { duration: 5000 }
-    );
+    const message = response.isBackgroundProcessing
+      ? `PDF queued for background processing. Estimated time: ${this.estimatedTime}`
+      : 'PDF uploaded successfully. Processing embeddings...';
 
-    // Start polling job status
-    this.pollJobStatus();
+    this.snackBar.open(message, 'OK', { duration: 5000 });
+
+    // Start polling - prefer document status over job status for better accuracy
+    if (response.documentId) {
+      this.pollDocumentStatus(response.documentId);
+    } else if (response.jobId) {
+      this.pollJobStatus();
+    }
   }
 
   /**
-   * Poll job status for background processing
+   * Poll document status for background processing
+   */
+  private pollDocumentStatus(documentId: string): void {
+    this.apiService.pollDocumentStatus(documentId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (status) => {
+          this.processingProgress = status.progress;
+          this.processingMessage = status.progressMessage || `Status: ${status.status}`;
+
+          if (status.status === 'completed') {
+            this.handleDocumentProcessingComplete(status, documentId);
+          } else if (status.status === 'error') {
+            this.handleDocumentProcessingFailed(status);
+          }
+        },
+        error: (error) => {
+          console.error('Document status polling error:', error);
+          this.handleDocumentProcessingFailed({
+            status: 'error',
+            progressMessage: 'Failed to track processing status'
+          } as any);
+        }
+      });
+  }
+
+  /**
+   * Poll job status for background processing (fallback)
    */
   private pollJobStatus(): void {
     if (!this.currentJobId) return;
@@ -349,7 +380,32 @@ Please describe what happened when you tried to upload the file.
   }
 
   /**
-   * Handle successful background processing completion
+   * Handle successful document processing completion
+   */
+  private handleDocumentProcessingComplete(status: any, documentId: string): void {
+    this.isBackgroundProcessing = false;
+    this.processingProgress = 100;
+    this.processingMessage = 'Processing completed!';
+
+    // Update PDF state with completed processing
+    this.pdfStateService.setProcessingComplete(
+      documentId,
+      status.metadata?.filename || 'Unknown',
+      status.metadata?.numPages || 0
+    );
+
+    this.snackBar.open(
+      `PDF processing completed! Document is ready for chat.`,
+      'Close',
+      { duration: 5000 }
+    );
+
+    this.retryCount = 0;
+    this.clearError();
+  }
+
+  /**
+   * Handle successful background processing completion (fallback)
    */
   private handleBackgroundProcessingComplete(status: JobStatus): void {
     this.isBackgroundProcessing = false;
@@ -374,7 +430,38 @@ Please describe what happened when you tried to upload the file.
   }
 
   /**
-   * Handle failed background processing
+   * Handle failed document processing
+   */
+  private handleDocumentProcessingFailed(status: any): void {
+    this.isBackgroundProcessing = false;
+
+    this.errorState = {
+      hasError: true,
+      errorType: 'processing',
+      errorMessage: status.progressMessage || 'Document processing failed',
+      timestamp: new Date(),
+      retryable: true,
+      retryCount: this.retryCount,
+      maxRetries: this.maxRetries
+    };
+
+    this.fallbackConfig = {
+      showRetryButton: true,
+      showContactSupport: true,
+      showOfflineMode: false,
+      customMessage: `Document processing failed: ${status.progressMessage || 'Unknown error'}`,
+      actionLabel: 'Retry Upload'
+    };
+
+    this.snackBar.open(
+      'Document processing failed. You can retry the upload.',
+      'Close',
+      { duration: 5000 }
+    );
+  }
+
+  /**
+   * Handle failed background processing (fallback)
    */
   private handleBackgroundProcessingFailed(status: JobStatus): void {
     this.isBackgroundProcessing = false;

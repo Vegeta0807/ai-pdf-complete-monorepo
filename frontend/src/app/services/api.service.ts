@@ -55,8 +55,11 @@ export interface UploadResponse {
   chunksCreated?: number;
   processingTime?: number;
   isBackgroundProcessing: boolean;
+  isProcessing?: boolean;
+  processingStatus?: string;
   jobId?: string;
   estimatedProcessingTime?: string;
+  statusCheckUrl?: string;
 }
 
 export interface JobStatus {
@@ -71,6 +74,23 @@ export interface JobStatus {
   completedAt?: string;
   error?: string;
   result?: any;
+}
+
+export interface DocumentStatus {
+  documentId: string;
+  status: 'uploading' | 'uploaded' | 'processing' | 'vectorizing' | 'completed' | 'error';
+  progress: number;
+  progressMessage: string;
+  isReady: boolean;
+  isProcessing: boolean;
+  timestamp: string;
+  lastUpdated?: string;
+  metadata: {
+    filename: string;
+    fileSize: number;
+    numPages: number;
+    isLargeDocument: boolean;
+  };
 }
 
 @Injectable({
@@ -244,5 +264,47 @@ export class ApiService {
         }),
         catchError(this.handleError)
       );
+  }
+
+  /**
+   * Get document processing status
+   */
+  getDocumentStatus(documentId: string): Observable<DocumentStatus> {
+    return this.http.get<ApiResponse<DocumentStatus>>(`${this.baseUrl}/pdf/status/${documentId}`)
+      .pipe(
+        map(response => {
+          if (response.success && response.data) {
+            return response.data;
+          }
+          throw new Error(response.message || 'Failed to get document status');
+        }),
+        catchError(this.handleError)
+      );
+  }
+
+  /**
+   * Poll document status until completion
+   */
+  pollDocumentStatus(documentId: string, intervalMs: number = 2000): Observable<DocumentStatus> {
+    return new Observable(observer => {
+      const poll = () => {
+        this.getDocumentStatus(documentId).subscribe({
+          next: (status) => {
+            observer.next(status);
+
+            if (status.status === 'completed' || status.status === 'error') {
+              observer.complete();
+            } else {
+              setTimeout(poll, intervalMs);
+            }
+          },
+          error: (error) => {
+            observer.error(error);
+          }
+        });
+      };
+
+      poll();
+    });
   }
 }

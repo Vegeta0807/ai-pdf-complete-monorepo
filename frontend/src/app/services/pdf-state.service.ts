@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { tap, catchError, map } from 'rxjs/operators';
-import { ApiService, UploadResponse } from './api.service';
+import { ApiService, UploadResponse, DocumentStatus } from './api.service';
 
 export interface PdfState {
   file: File | null;
@@ -12,7 +12,7 @@ export interface PdfState {
   isProcessing: boolean; // Backend processing (parsing, vectorization)
   isUploaded: boolean;
   uploadError: string | null;
-  processingStage: 'idle' | 'uploading' | 'parsing' | 'vectorizing' | 'complete' | 'error';
+  processingStage: 'idle' | 'uploading' | 'processing' | 'parsing' | 'vectorizing' | 'complete' | 'error';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -88,15 +88,22 @@ export class PdfStateService {
 
     return this.apiService.uploadPdf(file).pipe(
       tap(response => {
+        // Upload completed, but processing may still be ongoing
         this.updateState({
-          pdfId: response.documentId, // Map documentId to pdfId for internal use
-          pages: response.numPages || response.chunksCreated, // Use numPages from backend, fallback to chunksCreated
+          pdfId: response.documentId,
+          pages: response.numPages,
           isUploading: false,
-          isProcessing: false,
-          isUploaded: true,
+          // Keep isProcessing true if background processing is happening
+          isProcessing: response.isProcessing || response.isBackgroundProcessing || false,
+          isUploaded: true, // Upload is complete, but processing may continue
           uploadError: null,
-          processingStage: 'complete'
+          processingStage: response.isProcessing ? 'processing' : 'complete'
         });
+
+        // If background processing is happening, start polling for status
+        if (response.isProcessing || response.isBackgroundProcessing) {
+          this.startStatusPolling(response.documentId);
+        }
       }),
       catchError(error => {
         let errorMessage = 'Upload failed. Please try again.';
@@ -176,6 +183,58 @@ export class PdfStateService {
       pdfId: documentId,
       filename: filename,
       pages: pages
+    });
+  }
+
+  /**
+   * Start polling document status for background processing
+   */
+  private startStatusPolling(documentId: string): void {
+    this.apiService.pollDocumentStatus(documentId, 2000).subscribe({
+      next: (status: DocumentStatus) => {
+        this.updateProcessingStatus(status);
+      },
+      error: (error) => {
+        console.error('Status polling error:', error);
+        this.updateState({
+          isProcessing: false,
+          uploadError: 'Failed to track processing status',
+          processingStage: 'error'
+        });
+      },
+      complete: () => {
+        // Polling completed (document finished processing)
+        console.log('Document processing completed');
+      }
+    });
+  }
+
+  /**
+   * Update processing status based on document status
+   */
+  private updateProcessingStatus(status: DocumentStatus): void {
+    let processingStage: PdfState['processingStage'] = 'processing';
+
+    switch (status.status) {
+      case 'processing':
+        processingStage = 'parsing';
+        break;
+      case 'vectorizing':
+        processingStage = 'vectorizing';
+        break;
+      case 'completed':
+        processingStage = 'complete';
+        break;
+      case 'error':
+        processingStage = 'error';
+        break;
+    }
+
+    this.updateState({
+      isProcessing: status.isProcessing,
+      processingStage,
+      uploadError: status.status === 'error' ? 'Processing failed' : null,
+      pages: status.metadata?.numPages || this.currentState.pages
     });
   }
 
