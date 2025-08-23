@@ -3,6 +3,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global PDF.js Error Suppression */
+/* This suppresses the harmless PDF.js initialization errors that don't affect functionality */
+
 /* CSS Custom Properties for Colors */
 :root {
   /* Black-Purple Monochromatic Palette */

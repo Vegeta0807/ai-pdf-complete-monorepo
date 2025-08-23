@@ -1,4 +1,14 @@
 <div class="upload-container">
+  <!-- Error Fallback Overlay -->
+  <div class="error-overlay" *ngIf="errorState && errorState.hasError">
+    <app-error-fallback
+      [errorState]="errorState"
+      [config]="fallbackConfig"
+      (retry)="onErrorRetry()"
+      (dismiss)="onErrorDismiss()">
+    </app-error-fallback>
+  </div>
+
   <div class="upload-card">
     <div class="upload-icon">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

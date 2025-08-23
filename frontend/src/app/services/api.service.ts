@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpEventType } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { catchError, map, timeout, filter } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 export interface ApiResponse<T = any> {
@@ -52,8 +52,25 @@ export interface UploadResponse {
   filename: string;
   fileSize: number;
   numPages?: number;
-  chunksCreated: number;
-  processingTime: number;
+  chunksCreated?: number;
+  processingTime?: number;
+  isBackgroundProcessing: boolean;
+  jobId?: string;
+  estimatedProcessingTime?: string;
+}
+
+export interface JobStatus {
+  jobId: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  progress: number;
+  statusMessage?: string;
+  documentId: string;
+  filename: string;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  error?: string;
+  result?: any;
 }
 
 @Injectable({
@@ -71,16 +88,30 @@ export class ApiService {
     const formData = new FormData();
     formData.append('pdf', file);
 
-    return this.http.post<ApiResponse<UploadResponse>>(`${this.baseUrl}/pdf/upload`, formData)
-      .pipe(
-        map(response => {
-          if (response.success && response.data) {
-            return response.data;
-          }
-          throw new Error(response.message || 'Upload failed');
-        }),
-        catchError(this.handleError)
-      );
+    // Calculate timeout based on file size (minimum 2 minutes, +30 seconds per MB)
+    const timeoutMs = Math.max(120000, 30000 + (file.size / 1024 / 1024) * 30000);
+
+    return this.http.post<ApiResponse<UploadResponse>>(`${this.baseUrl}/pdf/upload`, formData, {
+      // Add timeout and progress reporting
+      reportProgress: true,
+      observe: 'events'
+    }).pipe(
+      timeout(timeoutMs),
+      filter((event: any) => event.type === HttpEventType.Response),
+      map((event: any) => {
+        const response = event.body;
+        if (response.success && response.data) {
+          return response.data;
+        }
+        throw new Error(response.message || 'Upload failed');
+      }),
+      catchError(error => {
+        if (error.name === 'TimeoutError') {
+          throw new Error(`Upload timed out after ${Math.round(timeoutMs / 1000)} seconds. Please try a smaller file or check your connection.`);
+        }
+        return this.handleError(error);
+      })
+    );
   }
 
   /**
@@ -155,5 +186,63 @@ export class ApiService {
     }
 
     return throwError(() => new Error(errorMessage));
+  }
+
+  /**
+   * Get job status for background processing
+   */
+  getJobStatus(jobId: string): Observable<JobStatus> {
+    return this.http.get<ApiResponse<JobStatus>>(`${this.baseUrl}/pdf/job/${jobId}`)
+      .pipe(
+        map(response => {
+          if (response.success && response.data) {
+            return response.data;
+          }
+          throw new Error(response.message || 'Failed to get job status');
+        }),
+        catchError(this.handleError)
+      );
+  }
+
+  /**
+   * Poll job status until completion
+   */
+  pollJobStatus(jobId: string, intervalMs: number = 2000): Observable<JobStatus> {
+    return new Observable(observer => {
+      const poll = () => {
+        this.getJobStatus(jobId).subscribe({
+          next: (status) => {
+            observer.next(status);
+
+            if (status.status === 'completed' || status.status === 'failed') {
+              observer.complete();
+            } else {
+              setTimeout(poll, intervalMs);
+            }
+          },
+          error: (error) => {
+            observer.error(error);
+          }
+        });
+      };
+
+      poll();
+    });
+  }
+
+  /**
+   * Get queue statistics
+   */
+  getQueueStats(): Observable<any> {
+    return this.http.get<ApiResponse<any>>(`${this.baseUrl}/pdf/queue/stats`)
+      .pipe(
+        map(response => {
+          if (response.success && response.data) {
+            return response.data;
+          }
+          throw new Error(response.message || 'Failed to get queue stats');
+        }),
+        catchError(this.handleError)
+      );
   }
 }

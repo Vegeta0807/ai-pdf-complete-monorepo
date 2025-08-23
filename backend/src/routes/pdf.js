@@ -5,6 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const { uploadValidation } = require('../middleware/validation');
 const { processPDF } = require('../services/pdfService');
 const { vectorizeDocument } = require('../../services/vectorServiceSelector');
+const jobQueue = require('../services/jobQueue');
 
 const router = express.Router();
 
@@ -33,7 +34,7 @@ const upload = multer({
   }
 });
 
-// Upload and process PDF
+// Upload and process PDF with background processing for large documents
 router.post('/upload', upload.single('pdf'), uploadValidation, async (req, res) => {
   try {
     if (!req.file) {
@@ -44,14 +45,46 @@ router.post('/upload', upload.single('pdf'), uploadValidation, async (req, res) 
     }
 
     const { filename, originalname, path: filePath, size } = req.file;
-    
-    console.log(`📄 Processing PDF: ${originalname} (${(size / 1024 / 1024).toFixed(2)}MB)`);
+    const documentId = uuidv4();
+    const pageCount = req.pdfPageCount; // Added by validation middleware
+    const isLargeDocument = req.isLargeDocument; // Added by validation middleware
+
+    console.log(`📄 Processing PDF: ${originalname} (${(size / 1024 / 1024).toFixed(2)}MB, ${pageCount} pages)`);
+
+    // For large documents (20+ pages), use background processing
+    if (isLargeDocument) {
+      console.log(`📋 Large document detected (${pageCount} pages), using background processing`);
+
+      const jobId = jobQueue.addJob({
+        type: 'pdf_processing',
+        documentId,
+        filePath,
+        filename: originalname,
+        fileSize: size,
+        pageCount,
+        uploadedAt: new Date().toISOString()
+      });
+
+      return res.json({
+        success: true,
+        message: 'Large PDF queued for background processing',
+        data: {
+          documentId,
+          jobId,
+          filename: originalname,
+          fileSize: size,
+          numPages: pageCount,
+          isBackgroundProcessing: true,
+          estimatedProcessingTime: Math.ceil(pageCount * 2) + ' seconds'
+        }
+      });
+    }
+
+    // For smaller documents, process immediately
+    console.log(`⚡ Small document (${pageCount} pages), processing immediately`);
 
     // Process PDF and extract text with page information
     const pdfResult = await processPDF(filePath);
-
-    // Create document ID
-    const documentId = uuidv4();
 
     // Vectorize and store in Chroma
     const vectorResult = await vectorizeDocument(documentId, pdfResult.text, {
@@ -71,7 +104,8 @@ router.post('/upload', upload.single('pdf'), uploadValidation, async (req, res) 
         fileSize: size,
         numPages: pdfResult.numPages,
         chunksCreated: vectorResult.chunksCreated,
-        processingTime: vectorResult.processingTime
+        processingTime: vectorResult.processingTime,
+        isBackgroundProcessing: false
       }
     });
 
@@ -130,6 +164,66 @@ router.get('/documents', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to retrieve documents',
+      error: error.message
+    });
+  }
+});
+
+// Get job status for background processing
+router.get('/job/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const job = jobQueue.getJob(jobId);
+
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: 'Job not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        jobId: job.id,
+        status: job.status,
+        progress: job.progress,
+        statusMessage: job.statusMessage,
+        documentId: job.documentId,
+        filename: job.filename,
+        createdAt: job.createdAt,
+        startedAt: job.startedAt,
+        completedAt: job.completedAt,
+        error: job.error,
+        result: job.result
+      }
+    });
+
+  } catch (error) {
+    console.error('Job status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get job status',
+      error: error.message
+    });
+  }
+});
+
+// Get queue statistics
+router.get('/queue/stats', async (req, res) => {
+  try {
+    const stats = jobQueue.getStats();
+
+    res.json({
+      success: true,
+      data: stats
+    });
+
+  } catch (error) {
+    console.error('Queue stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get queue statistics',
       error: error.message
     });
   }

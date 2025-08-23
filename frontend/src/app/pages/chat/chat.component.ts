@@ -4,9 +4,11 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { PdfViewerComponent } from '../../components/pdf-viewer/pdf-viewer.component';
 import { ChatbotComponent, Citation } from '../../components/chatbot/chatbot.component';
+import { ErrorFallbackComponent } from '../../components/error-fallback/error-fallback.component';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { ErrorState, FallbackConfig } from '../../interfaces/error-state.interface';
 
 @Component({
   selector: 'app-chat',
@@ -16,6 +18,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
     RouterModule,
     PdfViewerComponent,
     ChatbotComponent,
+    ErrorFallbackComponent,
     MatIconModule,
     MatButtonModule,
     MatTooltipModule
@@ -31,6 +34,14 @@ export class ChatComponent implements OnInit, OnDestroy {
   showMobilePdf = false; // Toggle state for mobile PDF viewer
   private fileSubscription?: any;
   private stateSubscription?: any;
+
+  // Error handling properties
+  errorState: ErrorState | null = null;
+  fallbackConfig: FallbackConfig = {
+    showRetryButton: true,
+    showContactSupport: true,
+    showOfflineMode: true
+  };
 
   constructor(
     private pdfState: PdfStateService,
@@ -71,6 +82,12 @@ export class ChatComponent implements OnInit, OnDestroy {
           break;
         case 'error':
           this.uploadProgress = `Upload failed: ${state.uploadError}`;
+
+          // Only show error fallback for connection/server errors, not user errors
+          if (this.isServerError(state.uploadError || '')) {
+            this.handleUploadError(state.uploadError || 'Unknown upload error');
+          }
+
           // Clear error message after a longer delay
           setTimeout(() => {
             this.uploadProgress = '';
@@ -90,6 +107,14 @@ export class ChatComponent implements OnInit, OnDestroy {
     if (this.pdfState && this.pdfState.file !== undefined) {
       this.handleFileChange(this.pdfState.file);
     }
+
+    // Check for existing upload errors when component loads
+    setTimeout(() => {
+      const currentState = this.pdfState.currentState;
+      if (currentState.uploadError && this.isServerError(currentState.uploadError)) {
+        this.handleUploadError(currentState.uploadError);
+      }
+    }, 500);
   }
 
   ngOnDestroy() {
@@ -252,5 +277,100 @@ export class ChatComponent implements OnInit, OnDestroy {
     this.pdfState.clearPdf();
     // You could also navigate to upload page if needed
     // this.router.navigate(['/upload']);
+  }
+
+  /**
+   * Handle upload errors and show appropriate fallback
+   */
+  private handleUploadError(errorMessage: string): void {
+    this.errorState = {
+      hasError: true,
+      errorType: 'processing',
+      errorMessage: 'Processing failed',
+      timestamp: new Date(),
+      retryable: true,
+      retryCount: 0,
+      maxRetries: 1
+    };
+
+    this.fallbackConfig = {
+      showRetryButton: true,
+      showContactSupport: false,
+      showOfflineMode: false,
+      customMessage: 'Processing failed',
+      actionLabel: 'Go Back'
+    };
+  }
+
+  /**
+   * Handle error fallback actions
+   */
+  onErrorRetry(): void {
+    this.clearError();
+    // Navigate to upload page
+    window.location.href = '/upload';
+  }
+
+  onErrorContactSupport(): void {
+    const subject = encodeURIComponent('AI PDF Chat - Upload Error in Chat');
+    const body = encodeURIComponent(`
+Error Details:
+- Type: ${this.errorState?.errorType}
+- Message: ${this.errorState?.errorMessage}
+- Time: ${this.errorState?.timestamp}
+- Page: Chat Component
+
+Please describe what happened when you tried to access the chat.
+    `);
+
+    window.open(`mailto:support@example.com?subject=${subject}&body=${body}`, '_blank');
+  }
+
+  onErrorDismiss(): void {
+    this.clearError();
+  }
+
+  /**
+   * Clear error state
+   */
+  private clearError(): void {
+    this.errorState = null;
+  }
+
+  /**
+   * Check if this is a server/connection error that warrants showing the error fallback
+   */
+  private isServerError(errorMessage: string): boolean {
+    // Match the actual error messages from PDF state service
+    const serverErrorPatterns = [
+      // HTTP failure patterns (Angular HttpClient errors)
+      'Http failure response',
+      ': 0 Unknown Error',
+      'status: 0',
+
+      // Direct error patterns
+      'ERR_CONNECTION_REFUSED',
+      'CONNECTION_REFUSED',
+      'net::ERR',
+      'ECONNREFUSED',
+      'NetworkError',
+      'Failed to fetch',
+      'fetch failed',
+
+      // User-friendly messages from PDF state service
+      'Cannot connect to server',
+      'Please check if the backend is running',
+      'Server error. Please try again later',
+      'Upload timed out',
+      'Network request failed',
+
+      // Generic patterns
+      'timeout',
+      'timed out'
+    ];
+
+    return serverErrorPatterns.some(pattern =>
+      errorMessage.toLowerCase().includes(pattern.toLowerCase())
+    );
   }
 }

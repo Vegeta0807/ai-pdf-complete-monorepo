@@ -99,11 +99,30 @@ export class PdfStateService {
         });
       }),
       catchError(error => {
+        let errorMessage = 'Upload failed. Please try again.';
+
+        // Better error message detection
+        if (error.status === 0 || error.message?.includes('ERR_CONNECTION_REFUSED')) {
+          errorMessage = 'Cannot connect to server. Please check if the backend is running.';
+        } else if (error.status === 413) {
+          errorMessage = 'File is too large. Please try a smaller file.';
+        } else if (error.status === 415) {
+          errorMessage = 'Invalid file type. Please upload a PDF file.';
+        } else if (error.status >= 500) {
+          errorMessage = 'Server error. Please try again later.';
+        } else if (error.name === 'TimeoutError') {
+          errorMessage = 'Upload timed out. Please try again.';
+        } else if (error?.error?.message) {
+          errorMessage = error.error.message;
+        } else if (error?.message) {
+          errorMessage = error.message;
+        }
+
         this.updateState({
           isUploading: false,
           isProcessing: false,
           isUploaded: false,
-          uploadError: error.message,
+          uploadError: errorMessage,
           processingStage: 'error'
         });
         return throwError(() => error);
@@ -132,6 +151,32 @@ export class PdfStateService {
    */
   clearPdf(): void {
     this.stateSubject.next(this.initialState);
+  }
+
+  /**
+   * Clear only the error state
+   */
+  clearError(): void {
+    this.updateState({
+      uploadError: null,
+      processingStage: this.currentState.isUploaded ? 'complete' : 'idle'
+    });
+  }
+
+  /**
+   * Update PDF state after background processing completion
+   */
+  setProcessingComplete(documentId: string, filename: string, pages: number): void {
+    this.updateState({
+      isUploaded: true,
+      isUploading: false,
+      isProcessing: false,
+      uploadError: null,
+      processingStage: 'complete',
+      pdfId: documentId,
+      filename: filename,
+      pages: pages
+    });
   }
 
   /**

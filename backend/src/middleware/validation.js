@@ -1,4 +1,6 @@
 const Joi = require('joi');
+const pdfParse = require('pdf-parse');
+const fs = require('fs').promises;
 
 // Validation middleware factory
 const validate = (schema) => {
@@ -15,8 +17,8 @@ const validate = (schema) => {
   };
 };
 
-// PDF upload validation
-const uploadValidation = (req, res, next) => {
+// PDF upload validation with page count check
+const uploadValidation = async (req, res, next) => {
   if (!req.file) {
     return res.status(400).json({
       success: false,
@@ -36,6 +38,39 @@ const uploadValidation = (req, res, next) => {
     return res.status(413).json({
       success: false,
       message: `File size exceeds limit of ${(maxSize / 1024 / 1024).toFixed(1)}MB`
+    });
+  }
+
+  // Early page count validation
+  try {
+    const maxPages = parseInt(process.env.MAX_PAGES) || 50;
+    const dataBuffer = await fs.readFile(req.file.path);
+    const pdfData = await pdfParse(dataBuffer);
+
+    console.log(`📄 Page validation: ${pdfData.numpages} pages (limit: ${maxPages})`);
+
+    if (pdfData.numpages > maxPages) {
+      return res.status(413).json({
+        success: false,
+        message: `PDF has ${pdfData.numpages} pages. Maximum allowed is ${maxPages} pages.`,
+        errorCode: 'PAGE_LIMIT_EXCEEDED',
+        data: {
+          actualPages: pdfData.numpages,
+          maxPages: maxPages
+        }
+      });
+    }
+
+    // Add page count to request for later use
+    req.pdfPageCount = pdfData.numpages;
+    req.isLargeDocument = pdfData.numpages >= (parseInt(process.env.LARGE_DOC_THRESHOLD) || 20);
+
+  } catch (error) {
+    console.error('Page count validation error:', error);
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid PDF file or corrupted document',
+      errorCode: 'PDF_VALIDATION_FAILED'
     });
   }
 

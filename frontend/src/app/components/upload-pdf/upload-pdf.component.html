@@ -1,4 +1,15 @@
-<div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+<div class="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 relative">
+  <!-- Error Fallback Overlay -->
+  <div class="error-overlay" *ngIf="errorState && errorState.hasError">
+    <app-error-fallback
+      [errorState]="errorState"
+      [config]="fallbackConfig"
+      (retry)="onErrorRetry()"
+      (contactSupport)="onErrorContactSupport()"
+      (dismiss)="onErrorDismiss()">
+    </app-error-fallback>
+  </div>
+
   <!-- Header -->
   <div class="w-full max-w-4xl mb-8">
     <div class="flex items-center justify-between mb-6">
@@ -62,7 +73,7 @@
         </div>
 
         <!-- Upload Progress -->
-        <div class="mb-6" *ngIf="pdfState.isUploading">
+        <div class="mb-6" *ngIf="pdfState.isUploading && !pdfState.uploadError && !isBackgroundProcessing">
           <mat-spinner diameter="60" class="mx-auto mb-4"></mat-spinner>
           <h3 class="text-2xl font-semibold text-gray-800 mb-4">
             Uploading & Processing...
@@ -72,8 +83,34 @@
           </p>
         </div>
 
+        <!-- Background Processing Progress -->
+        <div class="mb-6" *ngIf="isBackgroundProcessing">
+          <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <mat-icon class="text-2xl text-purple-600">schedule</mat-icon>
+          </div>
+          <h3 class="text-2xl font-semibold text-gray-800 mb-4">
+            Background Processing...
+          </h3>
+          <p class="text-lg text-gray-600 mb-4">
+            {{ processingMessage }}
+          </p>
+
+          <!-- Progress Bar -->
+          <div class="w-full bg-gray-200 rounded-full h-2 mb-4">
+            <div class="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                 [style.width.%]="processingProgress">
+            </div>
+          </div>
+
+          <div class="text-sm text-gray-500 space-y-1">
+            <p>Progress: {{ processingProgress }}%</p>
+            <p *ngIf="estimatedTime">Estimated time: {{ estimatedTime }}</p>
+            <p class="text-xs">Large documents are processed in the background for better performance</p>
+          </div>
+        </div>
+
         <!-- Upload Success -->
-        <div class="mb-6" *ngIf="pdfState.isUploaded">
+        <div class="mb-6" *ngIf="pdfState.isUploaded && !pdfState.uploadError">
           <mat-icon class="text-4xl text-green-500 mb-2">check_circle</mat-icon>
           <h3 class="text-2xl font-semibold text-gray-800 mb-2">
             Upload Successful!
@@ -111,7 +148,7 @@
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex gap-4 justify-center mt-8" *ngIf="pdfState.isUploaded">
+      <div class="flex gap-4 justify-center mt-8" *ngIf="pdfState.isUploaded && !pdfState.uploadError">
         <button mat-stroked-button (click)="clearPdf()" class="border-purple-500 text-purple-500 hover:bg-purple-50">
           <mat-icon class="mr-2">refresh</mat-icon>
           Upload Another
@@ -123,7 +160,7 @@
       </div>
 
       <!-- Browse Button -->
-      <div class="mt-6" *ngIf="!pdfState.file && !pdfState.isUploading">
+      <div class="mt-6" *ngIf="!pdfState.file && !pdfState.isUploading && !pdfState.uploadError">
         <button mat-raised-button (click)="triggerFileInput()" class="bg-purple-600 text-white hover:bg-purple-700">
           <mat-icon class="mr-2">folder_open</mat-icon>
           Browse Files
@@ -132,7 +169,7 @@
 
       <!-- Try Again Button -->
       <div class="mt-6" *ngIf="pdfState.uploadError">
-        <button mat-raised-button (click)="triggerFileInput()" class="bg-purple-600 text-white hover:bg-purple-700">
+        <button mat-raised-button (click)="retryUpload()" class="bg-purple-600 text-white hover:bg-purple-700">
           <mat-icon class="mr-2">refresh</mat-icon>
           Try Again
         </button>

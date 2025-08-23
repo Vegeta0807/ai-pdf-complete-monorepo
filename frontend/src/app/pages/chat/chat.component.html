@@ -1,4 +1,15 @@
 <div class="simple-chat-layout">
+  <!-- Error Fallback Overlay -->
+  <div class="error-overlay" *ngIf="errorState && errorState.hasError">
+    <app-error-fallback
+      [errorState]="errorState"
+      [config]="fallbackConfig"
+      (retry)="onErrorRetry()"
+      (contactSupport)="onErrorContactSupport()"
+      (dismiss)="onErrorDismiss()">
+    </app-error-fallback>
+  </div>
+
   <!-- Header -->
   <div class="chat-header">
     <div class="document-info">

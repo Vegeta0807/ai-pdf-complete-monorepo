@@ -12,10 +12,12 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { trigger, state, style, transition, animate } from '@angular/animations';
-import { Subject, takeUntil, take } from 'rxjs';
+import { Subject, takeUntil, take, catchError, of, timeout } from 'rxjs';
 import { ApiService, ChatRequest } from '../../services/api.service';
 import { PdfStateService } from '../../services/pdf-state.service';
 import { PdfNavigationService } from '../../services/pdf-navigation.service';
+import { ErrorFallbackComponent } from '../error-fallback/error-fallback.component';
+import { ErrorState, FallbackConfig } from '../../interfaces/error-state.interface';
 
 export interface Citation {
   id: number;
@@ -31,6 +33,7 @@ export interface ChatMessage {
   timestamp: Date;
   isTyping?: boolean;
   citations?: Citation[];
+  isError?: boolean;
 }
 
 @Component({
@@ -48,7 +51,8 @@ export interface ChatMessage {
     MatProgressSpinnerModule,
     MatSnackBarModule,
     MatChipsModule,
-    MatTooltipModule
+    MatTooltipModule,
+    ErrorFallbackComponent
   ],
   templateUrl: './chatbot.component.html',
   styleUrl: './chatbot.component.scss',
@@ -81,6 +85,16 @@ export class ChatbotComponent implements OnInit, OnDestroy, AfterViewInit {
   isTyping = false;
   isUploading = false;
   pdfId: string | null = null;
+
+  // Error handling properties
+  errorState: ErrorState | null = null;
+  fallbackConfig: FallbackConfig = {
+    showRetryButton: true,
+    showContactSupport: true,
+    showOfflineMode: true
+  };
+  retryCount = 0;
+  maxRetries = 3;
 
   constructor(
     private apiService: ApiService,
@@ -223,35 +237,35 @@ What would you like to know about your document?`;
     };
 
     this.apiService.sendChatMessage(chatRequest)
-      .pipe(takeUntil(this.destroy$))
+      .pipe(
+        takeUntil(this.destroy$),
+        timeout(60000), // 60 second timeout
+        catchError(error => {
+          this.handleChatError(error, this.currentMessage);
+          return of(null);
+        })
+      )
       .subscribe({
         next: (response) => {
-          this.isTyping = false;
-          this.isLoading = false;
+          if (response) {
+            this.isTyping = false;
+            this.isLoading = false;
+            this.clearError(); // Clear any previous errors
 
-          const aiMessage: ChatMessage = {
-            id: this.generateId(),
-            content: response.response,
-            isUser: false,
-            timestamp: new Date(),
-            citations: response.citations || []
-          };
+            const aiMessage: ChatMessage = {
+              id: this.generateId(),
+              content: response.response,
+              isUser: false,
+              timestamp: new Date(),
+              citations: response.citations || []
+            };
 
-          this.addMessage(aiMessage);
+            this.addMessage(aiMessage);
+            this.retryCount = 0; // Reset retry count on success
+          }
         },
         error: (error) => {
-          this.isTyping = false;
-          this.isLoading = false;
-
-          const errorMessage: ChatMessage = {
-            id: this.generateId(),
-            content: `Sorry, I encountered an error: ${error.message}. Please try again.`,
-            isUser: false,
-            timestamp: new Date()
-          };
-
-          this.addMessage(errorMessage);
-          this.snackBar.open('Failed to get AI response', 'Close', { duration: 3000 });
+          this.handleChatError(error, this.currentMessage);
         }
       });
   }
@@ -372,6 +386,115 @@ What would you like to know about your document?`;
         }, 1000);
       }
     });
+  }
+
+  /**
+   * Handle chat errors with proper fallback
+   */
+  private handleChatError(error: any, originalMessage: string): void {
+    this.isTyping = false;
+    this.isLoading = false;
+    this.retryCount++;
+
+    // Determine error type
+    let errorType: ErrorState['errorType'] = 'unknown';
+    let errorMessage = 'An unexpected error occurred';
+
+    if (error.name === 'TimeoutError') {
+      errorType = 'timeout';
+      errorMessage = 'Request timed out. The AI service may be busy.';
+    } else if (error.status === 0) {
+      errorType = 'network';
+      errorMessage = 'Network connection failed. Please check your internet connection.';
+    } else if (error.status >= 500) {
+      errorType = 'server';
+      errorMessage = 'Server error. Our AI service is temporarily unavailable.';
+    } else if (error.status === 413) {
+      errorType = 'upload';
+      errorMessage = 'Message too large. Please try a shorter message.';
+    } else {
+      errorMessage = error.message || 'Failed to get AI response';
+    }
+
+    // Create error state
+    this.errorState = {
+      hasError: true,
+      errorType,
+      errorMessage,
+      errorCode: error.status?.toString(),
+      timestamp: new Date(),
+      retryable: this.retryCount < this.maxRetries,
+      retryCount: this.retryCount,
+      maxRetries: this.maxRetries
+    };
+
+    // Update fallback config
+    this.fallbackConfig = {
+      showRetryButton: this.errorState.retryable,
+      showContactSupport: this.retryCount >= this.maxRetries,
+      showOfflineMode: errorType === 'network',
+      customMessage: errorMessage,
+      actionLabel: 'Retry Message',
+      onRetry: () => this.retryLastMessage(originalMessage)
+    };
+
+    // Add error message to chat
+    const errorChatMessage: ChatMessage = {
+      id: this.generateId(),
+      content: `${errorMessage} ${this.errorState.retryable ? 'You can try again.' : ''}`,
+      isUser: false,
+      timestamp: new Date(),
+      isError: true
+    };
+
+    this.addMessage(errorChatMessage);
+    this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
+  }
+
+  /**
+   * Clear error state
+   */
+  private clearError(): void {
+    this.errorState = null;
+    this.retryCount = 0;
+  }
+
+  /**
+   * Retry the last message
+   */
+  private retryLastMessage(message: string): void {
+    this.currentMessage = message;
+    this.clearError();
+    this.sendMessage();
+  }
+
+  /**
+   * Handle error fallback actions
+   */
+  onErrorRetry(): void {
+    if (this.fallbackConfig.onRetry) {
+      this.fallbackConfig.onRetry();
+    }
+  }
+
+  onErrorContactSupport(): void {
+    const subject = encodeURIComponent('AI PDF Chat - Technical Support');
+    const body = encodeURIComponent(`
+Error Details:
+- Type: ${this.errorState?.errorType}
+- Message: ${this.errorState?.errorMessage}
+- Code: ${this.errorState?.errorCode}
+- Time: ${this.errorState?.timestamp}
+- Retry Count: ${this.errorState?.retryCount}
+
+Please describe what you were trying to do when this error occurred.
+    `);
+
+    window.open(`mailto:support@example.com?subject=${subject}&body=${body}`, '_blank');
+  }
+
+  onErrorDismiss(): void {
+    this.clearError();
   }
 
 }

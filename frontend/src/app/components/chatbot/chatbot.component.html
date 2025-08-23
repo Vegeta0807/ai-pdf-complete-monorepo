@@ -1,8 +1,19 @@
 <div class="chatbot-container">
 
 
+  <!-- Error Fallback -->
+  <div class="error-overlay" *ngIf="errorState && errorState.hasError">
+    <app-error-fallback
+      [errorState]="errorState"
+      [config]="fallbackConfig"
+      (retry)="onErrorRetry()"
+      (contactSupport)="onErrorContactSupport()"
+      (dismiss)="onErrorDismiss()">
+    </app-error-fallback>
+  </div>
+
   <!-- Ready to Chat Overlay -->
-  <div class="chat-loading-overlay" *ngIf="!pdfId && !isUploading && messages.length === 0">
+  <div class="chat-loading-overlay" *ngIf="!pdfId && !isUploading && messages.length === 0 && !errorState">
     <div class="loading-content text-center">
       <div class="loading-icon mb-4">
         <div class="w-16 h-16 bg-gradient-accent rounded-2xl flex items-center justify-center mx-auto">

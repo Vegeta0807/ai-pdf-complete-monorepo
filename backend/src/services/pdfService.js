@@ -4,27 +4,67 @@ const axios = require('axios');
 const FormData = require('form-data');
 
 /**
- * Process PDF using pdf-parse (local processing)
+ * Process PDF using pdf-parse (local processing) with progress tracking
  * @param {string} filePath - Path to the PDF file
+ * @param {object} options - Processing options
+ * @param {function} options.onProgress - Progress callback function
  * @returns {Promise<object>} - Extracted text content with page information
  */
-async function processPDFLocal(filePath) {
+async function processPDFLocal(filePath, options = {}) {
+  const { onProgress } = options;
   try {
+    if (onProgress) onProgress(10, 'Reading PDF file...');
     const dataBuffer = await fs.readFile(filePath);
-    const data = await pdfParse(dataBuffer);
+
+    if (onProgress) onProgress(30, 'Parsing PDF content...');
+    // Enhanced PDF parsing options for better text extraction
+    const data = await pdfParse(dataBuffer, {
+      // Preserve more whitespace and formatting
+      normalizeWhitespace: false,
+      // Better handling of tables and structured content
+      max: 0, // No page limit
+      version: 'v1.10.100' // Use latest version features
+    });
 
     console.log(`📄 PDF processed locally: ${data.numpages} pages, ${data.text.length} characters`);
+    if (onProgress) onProgress(60, 'Processing text content...');
+
+    // Enhanced text processing for financial documents
+    let processedText = data.text;
+
+    // Preserve table structure by maintaining spacing
+    processedText = processedText
+      // Normalize line breaks but preserve structure
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      // Preserve multiple spaces that might indicate table columns
+      .replace(/[ ]{2,}/g, (match) => ' '.repeat(Math.min(match.length, 8)))
+      // Ensure proper spacing around numbers and dates (important for financial data)
+      .replace(/(\d+\.?\d*)\s*([A-Za-z])/g, '$1 $2')
+      .replace(/([A-Za-z])\s*(\d+\.?\d*)/g, '$1 $2')
+      // Preserve currency symbols and amounts
+      .replace(/(\$|€|£|¥)\s*(\d)/g, '$1$2')
+      // Clean up excessive whitespace while preserving structure
+      .replace(/\n\s*\n\s*\n/g, '\n\n')
+      .trim();
+
+    console.log(`📊 Text processing: ${data.text.length} → ${processedText.length} characters`);
+    if (onProgress) onProgress(90, 'Finalizing processing...');
 
     // Return both text and page count
     return {
-      text: data.text,
+      text: processedText,
       numPages: data.numpages,
       metadata: {
         title: data.info?.Title || null,
         author: data.info?.Author || null,
         creator: data.info?.Creator || null,
         producer: data.info?.Producer || null,
-        creationDate: data.info?.CreationDate || null
+        creationDate: data.info?.CreationDate || null,
+        // Add processing metadata
+        processingMethod: 'enhanced-local',
+        textLength: processedText.length,
+        originalTextLength: data.text.length
       }
     };
   } catch (error) {
@@ -173,20 +213,40 @@ async function pollLlamaParseJob(apiKey, jobId) {
 }
 
 /**
- * Main PDF processing function with fallback strategy
+ * Main PDF processing function with fallback strategy and progress tracking
  * @param {string} filePath - Path to the PDF file
+ * @param {object} options - Processing options
+ * @param {function} options.onProgress - Progress callback function
  * @returns {Promise<object>} - Extracted text content with page information
  */
-async function processPDF(filePath) {
+async function processPDF(filePath, options = {}) {
+  const { onProgress } = options;
+
   try {
+    if (onProgress) onProgress(0, 'Starting PDF processing...');
+
     // Check if LlamaParse API key is available
-    if (process.env.LLAMAPARSE_API_KEY) {
+    if (process.env.LLAMAPARSE_API_KEY && process.env.LLAMAPARSE_API_KEY !== 'exaple-key') {
       console.log('🚀 Using LlamaParse for PDF processing...');
-      return await processPDFWithLlamaParse(filePath);
-    } else {
-      console.log('📄 Using local PDF processing...');
-      return await processPDFLocal(filePath);
+      if (onProgress) onProgress(20, 'Using cloud processing...');
+
+      try {
+        const result = await processPDFWithLlamaParse(filePath, options);
+        if (onProgress) onProgress(100, 'Cloud processing completed');
+        return result;
+      } catch (llamaError) {
+        console.warn('⚠️ LlamaParse failed, falling back to local processing:', llamaError.message);
+        if (onProgress) onProgress(30, 'Falling back to local processing...');
+      }
     }
+
+    console.log('📄 Using local PDF processing...');
+    if (onProgress) onProgress(40, 'Processing locally...');
+
+    const result = await processPDFLocal(filePath, options);
+    if (onProgress) onProgress(100, 'Local processing completed');
+    return result;
+
   } catch (error) {
     console.error('PDF processing failed:', error);
     throw error;
@@ -209,26 +269,69 @@ async function processPDF(filePath) {
  * @param {number} totalPages - Total number of pages in the document
  * @returns {Array<object>} - Array of text chunks with page information
  */
-function chunkText(text, chunkSize = 1000, overlap = 200, totalPages = 1) {
+function chunkText(text, chunkSize = 1500, overlap = 300, totalPages = 1) {
   const chunks = [];
   let start = 0;
 
   // More conservative page estimation
   const avgCharsPerPage = Math.max(500, text.length / Math.max(totalPages, 1));
 
-  console.log(`📊 Chunking: ${text.length} chars, ${totalPages} pages, ${Math.round(avgCharsPerPage)} chars/page`);
+  console.log(`📊 Enhanced chunking: ${text.length} chars, ${totalPages} pages, ${Math.round(avgCharsPerPage)} chars/page`);
+
+  // Detect if this looks like a financial document
+  const isFinancialDoc = /(\$|€|£|¥|\d+\.\d{2}|balance|transaction|account|statement|payment|deposit|withdrawal)/gi.test(text.substring(0, 2000));
+
+  if (isFinancialDoc) {
+    console.log('📊 Detected financial document - using enhanced chunking strategy');
+    chunkSize = 2000; // Larger chunks for financial data
+    overlap = 400;    // More overlap to preserve transaction context
+  }
 
   while (start < text.length) {
     let end = start + chunkSize;
 
-    // If we're not at the end, try to break at a sentence or paragraph
+    // Enhanced break point detection for financial documents
     if (end < text.length) {
+      const breakPoints = [];
+
+      // Look for natural break points
       const lastPeriod = text.lastIndexOf('.', end);
       const lastNewline = text.lastIndexOf('\n', end);
-      const breakPoint = Math.max(lastPeriod, lastNewline);
+      const lastDoubleNewline = text.lastIndexOf('\n\n', end);
 
-      if (breakPoint > start + chunkSize * 0.5) {
-        end = breakPoint + 1;
+      // For financial docs, also look for transaction boundaries
+      if (isFinancialDoc) {
+        // Look for date patterns (common in statements)
+        const datePattern = /\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}/g;
+        let match;
+        while ((match = datePattern.exec(text.substring(Math.max(0, end - 500), end + 100))) !== null) {
+          const actualPos = Math.max(0, end - 500) + match.index;
+          if (actualPos > start + chunkSize * 0.3 && actualPos < end) {
+            breakPoints.push(actualPos);
+          }
+        }
+
+        // Look for amount patterns (transaction amounts)
+        const amountPattern = /\$\d+\.\d{2}|\d+\.\d{2}\s*(CR|DR|debit|credit)/gi;
+        let amountMatch;
+        while ((amountMatch = amountPattern.exec(text.substring(Math.max(0, end - 300), end + 100))) !== null) {
+          const actualPos = Math.max(0, end - 300) + amountMatch.index + amountMatch[0].length;
+          if (actualPos > start + chunkSize * 0.3 && actualPos < end) {
+            breakPoints.push(actualPos);
+          }
+        }
+      }
+
+      // Add standard break points
+      if (lastDoubleNewline > start + chunkSize * 0.3) breakPoints.push(lastDoubleNewline + 2);
+      if (lastNewline > start + chunkSize * 0.5) breakPoints.push(lastNewline + 1);
+      if (lastPeriod > start + chunkSize * 0.5) breakPoints.push(lastPeriod + 1);
+
+      // Choose the best break point
+      if (breakPoints.length > 0) {
+        // Prefer break points closer to the target end
+        breakPoints.sort((a, b) => Math.abs(a - end) - Math.abs(b - end));
+        end = breakPoints[0];
       }
     }
 
@@ -245,13 +348,20 @@ function chunkText(text, chunkSize = 1000, overlap = 200, totalPages = 1) {
       estimatedPage = Math.min(estimatedPage, totalPages);
       estimatedPage = Math.max(1, estimatedPage);
 
-      chunks.push({
+      // Enhanced metadata for financial documents
+      const chunkMetadata = {
         text: chunk,
         startChar: start,
         endChar: end,
         estimatedPage: estimatedPage,
-        chunkIndex: chunks.length
-      });
+        chunkIndex: chunks.length,
+        // Add financial document indicators
+        containsAmounts: /\$\d+\.\d{2}|\d+\.\d{2}\s*(CR|DR)/gi.test(chunk),
+        containsDates: /\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}/g.test(chunk),
+        isFinancialContent: isFinancialDoc
+      };
+
+      chunks.push(chunkMetadata);
     }
 
     start = end - overlap;

@@ -94,3 +94,11 @@ p {
 .hidden-file-input {
   display: none !important;
 }
+
+// Error overlay styles
+.error-overlay {
+  @apply absolute inset-0 flex items-center justify-center p-4;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+}

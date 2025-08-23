@@ -1,5 +1,5 @@
 .chatbot-container {
-  @apply h-full flex flex-col bg-transparent;
+  @apply h-full flex flex-col bg-transparent relative;
   overflow-x: hidden;
   max-width: 100%;
 
@@ -493,4 +493,12 @@
   font-size: 1.25rem; /* 20px */
   width: 1.25rem;
   height: 1.25rem;
+}
+
+// Error overlay styles
+.error-overlay {
+  @apply absolute inset-0 flex items-center justify-center p-4;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
 }

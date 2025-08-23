@@ -96,6 +96,17 @@ class VectorService {
           num_pages: metadata.numPages ? Number(metadata.numPages) : null
         };
 
+        // Add enhanced metadata for financial documents
+        if (chunk.containsAmounts !== undefined) {
+          cleanMetadata.contains_amounts = Boolean(chunk.containsAmounts);
+        }
+        if (chunk.containsDates !== undefined) {
+          cleanMetadata.contains_dates = Boolean(chunk.containsDates);
+        }
+        if (chunk.isFinancialContent !== undefined) {
+          cleanMetadata.is_financial_content = Boolean(chunk.isFinancialContent);
+        }
+
         // Only add PDF metadata if it exists and is valid
         if (metadata.pdfMetadata) {
           if (metadata.pdfMetadata.title) cleanMetadata.pdf_title = String(metadata.pdfMetadata.title);

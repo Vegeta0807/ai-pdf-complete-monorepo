@@ -1,0 +1,80 @@
+<div class="error-fallback-container">
+  <mat-card class="error-card">
+    <div class="error-content">
+      <!-- Error Icon -->
+      <div class="error-icon-container">
+        <mat-icon class="error-icon" [class]="'error-' + errorState.errorType">
+          {{ getErrorIcon() }}
+        </mat-icon>
+      </div>
+
+      <!-- Error Title -->
+      <h2 class="error-title text-gradient">{{ getErrorTitle() }}</h2>
+
+      <!-- Error Description -->
+      <p class="error-description text-red-600">{{ getErrorDescription() }}</p>
+
+      <!-- Technical Details (if available) -->
+      <div class="error-details" *ngIf="errorState.errorMessage && errorState.errorMessage !== getErrorDescription()">
+        <details>
+          <summary>Technical Details</summary>
+          <p class="error-technical">{{ errorState.errorMessage }}</p>
+          <p class="error-timestamp" *ngIf="errorState.timestamp">
+            Error occurred at: {{ errorState.timestamp | date:'medium' }}
+          </p>
+          <p class="error-code" *ngIf="errorState.errorCode">
+            Error Code: {{ errorState.errorCode }}
+          </p>
+        </details>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="error-actions">
+        <!-- Retry Button -->
+        <button 
+          mat-raised-button 
+          color="primary" 
+          *ngIf="shouldShowRetry()"
+          (click)="onRetry()"
+          class="action-button">
+          <mat-icon>refresh</mat-icon>
+          {{ config.actionLabel || 'Try Again' }}
+        </button>
+
+        <!-- Contact Support Button -->
+        <button 
+          mat-stroked-button 
+          *ngIf="config.showContactSupport"
+          (click)="onContactSupport()"
+          class="action-button">
+          <mat-icon>support_agent</mat-icon>
+          Contact Support
+        </button>
+
+        <!-- Dismiss Button -->
+        <button 
+          mat-button 
+          (click)="onDismiss()"
+          class="action-button dismiss-button">
+          <mat-icon>close</mat-icon>
+          Dismiss
+        </button>
+      </div>
+
+      <!-- Retry Count Info -->
+      <div class="retry-info" *ngIf="errorState.retryCount && errorState.retryCount > 0">
+        <p class="retry-text">
+          Retry attempt {{ errorState.retryCount }} of {{ errorState.maxRetries || 3 }}
+        </p>
+      </div>
+
+      <!-- Offline Mode Option -->
+      <div class="offline-mode" *ngIf="config.showOfflineMode && errorState.errorType === 'network'">
+        <p class="offline-text">
+          <mat-icon>wifi_off</mat-icon>
+          You appear to be offline. Some features may not be available.
+        </p>
+      </div>
+    </div>
+  </mat-card>
+</div>

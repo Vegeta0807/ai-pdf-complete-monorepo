@@ -10,6 +10,7 @@ import { Subject, takeUntil } from 'rxjs';
 
 import { PdfStateService } from '../../services/pdf-state.service';
 import { PdfNavigationService } from '../../services/pdf-navigation.service';
+import { PdfErrorHandlerService } from '../../services/pdf-error-handler.service';
 
 @Component({
   selector: 'app-pdf-viewer',
@@ -45,7 +46,8 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
 
   constructor(
     private pdfState: PdfStateService,
-    private pdfNavigationService: PdfNavigationService
+    private pdfNavigationService: PdfNavigationService,
+    private pdfErrorHandler: PdfErrorHandlerService
   ) {}
 
   private _pdfSrc: Uint8Array | null = null;
@@ -79,8 +81,8 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    // Add error handler for PDF.js initialization errors
-    this.setupPdfErrorHandler();
+    // Enable PDF.js error suppression for this component
+    this.pdfErrorHandler.enableSuppression();
 
     // Subscribe to navigation service for automatic navigation
     this.pdfNavigationService.currentPage$
@@ -130,6 +132,9 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    // Disable PDF.js error suppression when component is destroyed
+    this.pdfErrorHandler.disableSuppression();
+
     this.destroy$.next();
     this.destroy$.complete();
 
@@ -364,25 +369,42 @@ export class PdfViewerComponent implements OnInit, OnDestroy {
     }
   }
 
-  private setupPdfErrorHandler() {
-    // Store original console.error
-    const originalConsoleError = console.error;
+  /**
+   * Reset component to original state (called when error popup is dismissed or retry is clicked)
+   */
+  resetToOriginalState(): void {
+    // Clear all state
+    this.isLoading = false;
+    this.isProcessing = false;
+    this.error = null;
+    this.selectedFile = null;
+    this._pdfSrc = null;
+    this.currentPage = 1;
+    this.totalPages = 0;
+    this.zoom = 1.0;
 
-    // Override console.error to filter PDF.js specific errors for multi-page PDFs
-    console.error = (...args: any[]) => {
-      const message = args[0]?.toString() || '';
+    // Clear PDF state service
+    this.pdfState.clearPdf();
 
-      // Filter out specific PDF.js initialization errors that occur with multi-page PDFs
-      if (message.includes('Cannot read properties of undefined (reading \'_on\')') ||
-          message.includes('PDFFindController') ||
-          message.includes('Cannot read properties of undefined (reading \'_listeners\')') ||
-          message.includes('pdf_viewer.mjs')) {
-        // Silently ignore these PDF.js initialization errors
-        return;
-      }
-
-      // Call original console.error for other errors
-      originalConsoleError.apply(console, args);
-    };
+    // Reset file input
+    const fileInput = document.getElementById('pdf-file-input') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
   }
+
+  /**
+   * Handle error popup dismiss
+   */
+  onErrorDismiss(): void {
+    this.resetToOriginalState();
+  }
+
+  /**
+   * Handle error popup retry
+   */
+  onErrorRetry(): void {
+    this.resetToOriginalState();
+  }
+
 }

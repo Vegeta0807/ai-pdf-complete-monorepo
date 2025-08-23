@@ -14,7 +14,7 @@ async function generateResponseGroq(message, relevantChunks, conversationHistory
       apiKey: process.env.GROQ_API_KEY
     });
 
-    // Build context from relevant chunks with page information
+    // Build enhanced context from relevant chunks with page information
     const context = relevantChunks
       .map((chunk, index) => {
         const pageInfo = chunk.metadata?.page_number ? ` (Page ${chunk.metadata.page_number})` : '';
@@ -22,19 +22,39 @@ async function generateResponseGroq(message, relevantChunks, conversationHistory
       })
       .join('\n\n---\n\n');
 
-    // Build conversation history
+    // Detect document type for specialized instructions
+    const isFinancialDoc = /(\$|€|£|¥|\d+\.\d{2}|balance|transaction|account|statement|payment|deposit|withdrawal|credit|debit)/gi.test(context);
+
+    // Build conversation history with enhanced system prompt
     const messages = [
       {
         role: 'system',
-        content: `You are a helpful AI assistant that answers questions based on the provided PDF document context.
+        content: `You are a highly accurate AI assistant specialized in analyzing PDF documents with exceptional precision for structured data, especially financial documents like account statements, invoices, and reports.
 
-INSTRUCTIONS:
+CORE INSTRUCTIONS:
 - Use ONLY the information provided in the context below to answer questions
-- If the context doesn't contain relevant information, say so clearly
-- Be concise but comprehensive in your responses
+- Be extremely precise with numbers, dates, amounts, and financial data
+- Maintain exact formatting and values from the original document
 - When referencing information, include citations in the format [Source X] where X is the source number
 - Each source corresponds to a specific part of the document with page information when available
-- If asked about something not in the context, politely explain that the information isn't available in the uploaded document
+
+${isFinancialDoc ? `
+FINANCIAL DOCUMENT EXPERTISE:
+- Extract transaction details with complete accuracy: dates, amounts, descriptions, account numbers
+- Preserve exact monetary values including cents (e.g., $1,234.56 not $1,234)
+- Distinguish between different transaction types (credits, debits, transfers, fees)
+- Maintain chronological order when listing transactions
+- Include running balances and account totals exactly as shown
+- Identify account information, statement periods, and merchant/payee details precisely
+- For calculations, use only the exact numbers provided in the document
+` : ''}
+
+RESPONSE GUIDELINES:
+- Start with a direct, accurate answer
+- Include specific details and exact values from the document
+- Cite sources with [Source X] format for all referenced information
+- If the context lacks information for a question, state this clearly
+- For financial queries, double-check all numbers and calculations
 
 CONTEXT FROM PDF:
 ${context}`
@@ -97,23 +117,47 @@ async function generateResponseOpenAI(message, relevantChunks, conversationHisto
       apiKey: process.env.OPENAI_API_KEY
     });
 
-    // Build context from relevant chunks
+    // Build enhanced context from relevant chunks with metadata
     const context = relevantChunks
-      .map(chunk => chunk.content)
+      .map((chunk, index) => {
+        let chunkText = `[Chunk ${index + 1}`;
+        if (chunk.page) chunkText += `, Page ${chunk.page}`;
+        chunkText += `]\n${chunk.content}`;
+        return chunkText;
+      })
       .join('\n\n---\n\n');
 
-    // Build messages array
+    // Detect document type for specialized instructions
+    const isFinancialDoc = /(\$|€|£|¥|\d+\.\d{2}|balance|transaction|account|statement|payment|deposit|withdrawal|credit|debit)/gi.test(context);
+
+    // Build messages array with enhanced system prompt
     const messages = [
       {
         role: 'system',
-        content: `You are a helpful AI assistant that answers questions based on the provided PDF document context. 
+        content: `You are a highly accurate AI assistant specialized in analyzing PDF documents. You excel at extracting precise information, especially from structured documents like financial statements, reports, and account statements.
 
-INSTRUCTIONS:
+CORE INSTRUCTIONS:
 - Use ONLY the information provided in the context below to answer questions
+- Be extremely precise with numbers, dates, and financial data
 - If the context doesn't contain relevant information, say so clearly
-- Be concise but comprehensive in your responses
-- Cite specific parts of the document when possible
-- If asked about something not in the context, politely explain that the information isn't available in the uploaded document
+- Provide specific citations with page numbers when available
+- Maintain the exact formatting and values from the original document
+
+${isFinancialDoc ? `
+FINANCIAL DOCUMENT GUIDELINES:
+- Pay special attention to transaction details, amounts, dates, and account information
+- Preserve exact monetary values and currency symbols
+- Distinguish between credits, debits, balances, and different transaction types
+- When summarizing transactions, maintain chronological order and include all relevant details
+- For account statements, clearly identify account numbers, statement periods, and running balances
+- Be precise about transaction descriptions and merchant/payee information
+` : ''}
+
+RESPONSE FORMAT:
+- Start with a direct answer to the question
+- Include specific details and exact values from the document
+- Cite page numbers or sections when referencing information
+- If calculations are needed, show your work using only the provided data
 
 CONTEXT FROM PDF:
 ${context}`
