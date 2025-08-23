@@ -130,7 +130,6 @@ BANK STATEMENT SPECIFIC INSTRUCTIONS:
 - Do not convert or assume currency types - use exactly what appears in the document
 ` : ''}
 ` : ''}
-
 RESPONSE GUIDELINES:
 - Start with a direct, accurate answer
 - Include specific details and exact values from the document

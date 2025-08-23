@@ -29,55 +29,22 @@ async function processPDFLocal(filePath, options = {}) {
     console.log(`📄 PDF processed locally: ${data.numpages} pages, ${data.text.length} characters`);
     if (onProgress) onProgress(60, 'Processing text content...');
 
-    // Enhanced text processing for financial documents
-    let processedText = data.text;
-
-    // Detect if this is likely a bank statement or financial document
-    const isFinancialDoc = /(\$|€|£|¥|\d+\.\d{2}|balance|transaction|account|statement|payment|deposit|withdrawal|credit|debit)/gi.test(processedText.substring(0, 2000));
-
-    if (isFinancialDoc) {
-      console.log('📊 Detected financial document - applying enhanced text processing');
-
-      // Enhanced processing for financial documents
-      processedText = processedText
-        // Normalize line breaks but preserve structure
-        .replace(/\r\n/g, '\n')
-        .replace(/\r/g, '\n')
-        // Preserve table structure by maintaining spacing for financial data
-        .replace(/[ ]{3,}/g, (match) => ' '.repeat(Math.min(match.length, 10)))
-        // Ensure proper spacing around monetary amounts
-        .replace(/(\$|€|£|¥)\s*(\d)/g, '$1$2')
-        .replace(/(\d+\.\d{2})\s*(CR|DR|debit|credit)/gi, '$1 $2')
-        // Preserve date formats common in bank statements
-        .replace(/(\d{1,2}\/\d{1,2}\/\d{2,4})/g, ' $1 ')
-        .replace(/(\d{4}-\d{2}-\d{2})/g, ' $1 ')
-        .replace(/(\d{2}-\d{2}-\d{4})/g, ' $1 ')
-        // Ensure proper spacing around transaction descriptions
-        .replace(/(\d+\.?\d*)\s*([A-Za-z])/g, '$1 $2')
-        .replace(/([A-Za-z])\s*(\d+\.?\d*)/g, '$1 $2')
-        // Preserve account numbers and reference numbers
-        .replace(/([A-Z]{2,})\s*(\d{4,})/g, '$1 $2')
-        // Clean up excessive whitespace while preserving financial structure
-        .replace(/\n\s*\n\s*\n/g, '\n\n')
-        .replace(/[ ]{2}/g, ' ')
-        .trim();
-    } else {
-      // Standard text processing for non-financial documents
-      processedText = processedText
-        // Normalize line breaks but preserve structure
-        .replace(/\r\n/g, '\n')
-        .replace(/\r/g, '\n')
-        // Preserve multiple spaces that might indicate table columns
-        .replace(/[ ]{2,}/g, (match) => ' '.repeat(Math.min(match.length, 8)))
-        // Ensure proper spacing around numbers and dates
-        .replace(/(\d+\.?\d*)\s*([A-Za-z])/g, '$1 $2')
-        .replace(/([A-Za-z])\s*(\d+\.?\d*)/g, '$1 $2')
-        // Preserve currency symbols and amounts
-        .replace(/(\$|€|£|¥)\s*(\d)/g, '$1$2')
-        // Clean up excessive whitespace while preserving structure
-        .replace(/\n\s*\n\s*\n/g, '\n\n')
-        .trim();
-    }
+    // General text processing for all document types
+    let processedText = data.text
+      // Normalize line breaks but preserve structure
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      // Preserve table structure by maintaining reasonable spacing
+      .replace(/[ ]{3,}/g, (match) => ' '.repeat(Math.min(match.length, 4)))
+      // Ensure proper spacing around numbers and text
+      .replace(/(\d+\.?\d*)\s*([A-Za-z])/g, '$1 $2')
+      .replace(/([A-Za-z])\s*(\d+\.?\d*)/g, '$1 $2')
+      // Preserve currency symbols and amounts
+      .replace(/(\$|€|£|¥)\s*(\d)/g, '$1$2')
+      // Clean up excessive whitespace
+      .replace(/\n\s*\n\s*\n/g, '\n\n')
+      .replace(/[ ]{2,}/g, ' ')
+      .trim();
 
     console.log(`📊 Text processing: ${data.text.length} → ${processedText.length} characters`);
     if (onProgress) onProgress(90, 'Finalizing processing...');
@@ -461,24 +428,13 @@ function chunkText(text, chunkSize = 1500, overlap = 300, totalPages = 1) {
       estimatedPage = Math.min(estimatedPage, totalPages);
       estimatedPage = Math.max(1, estimatedPage);
 
-      // Enhanced metadata for financial documents
+      // General metadata for all document types
       const chunkMetadata = {
         text: chunk,
         startChar: start,
         endChar: end,
         estimatedPage: estimatedPage,
-        chunkIndex: chunks.length,
-        // Enhanced financial document indicators
-        containsAmounts: /\$\d+\.\d{2}|\d+\.\d{2}\s*(CR|DR)|(\$|€|£|¥)\s*\d{1,3}(,\d{3})*\.\d{2}/gi.test(chunk),
-        containsDates: /\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4}/g.test(chunk),
-        containsTransactions: /transaction|payment|deposit|withdrawal|transfer|check|debit|credit/gi.test(chunk),
-        containsAccountInfo: /account\s*#?\s*\d{4,}|balance|statement\s+period/gi.test(chunk),
-        containsMerchantInfo: /[A-Z][A-Z\s&]{3,}\s+\$?\d+\.\d{2}/g.test(chunk),
-        isFinancialContent: isFinancialDoc,
-        // Transaction count estimation
-        transactionCount: (chunk.match(/\d{1,2}\/\d{1,2}\/\d{2,4}\s+.*?\$?\d+\.\d{2}/g) || []).length,
-        // Balance information
-        containsBalance: /balance|available|current|previous|beginning|ending/gi.test(chunk)
+        chunkIndex: chunks.length
       };
 
       chunks.push(chunkMetadata);
@@ -487,28 +443,15 @@ function chunkText(text, chunkSize = 1500, overlap = 300, totalPages = 1) {
     start = end - overlap;
   }
 
-  // Enhanced debugging: Log page distribution and chunk analysis
+  // Log page distribution and chunk analysis
   const pageDistribution = chunks.reduce((acc, chunk) => {
     acc[chunk.estimatedPage] = (acc[chunk.estimatedPage] || 0) + 1;
     return acc;
   }, {});
 
-  // Calculate financial content statistics
-  const financialStats = {
-    chunksWithAmounts: chunks.filter(c => c.containsAmounts).length,
-    chunksWithDates: chunks.filter(c => c.containsDates).length,
-    chunksWithTransactions: chunks.filter(c => c.containsTransactions).length,
-    chunksWithAccountInfo: chunks.filter(c => c.containsAccountInfo).length,
-    totalTransactions: chunks.reduce((sum, c) => sum + (c.transactionCount || 0), 0)
-  };
-
-  console.log(`📝 Text chunked into ${chunks.length} pieces with enhanced page estimates`);
+  console.log(`📝 Text chunked into ${chunks.length} pieces with page estimates`);
   console.log(`📊 Page distribution:`, pageDistribution);
   console.log(`📄 Total pages: ${totalPages}, Avg chars per page: ${Math.round(avgCharsPerPage)}`);
-
-  if (isFinancialDoc) {
-    console.log(`💰 Financial content analysis:`, financialStats);
-  }
 
   return chunks;
 }

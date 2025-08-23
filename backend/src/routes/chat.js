@@ -42,34 +42,48 @@ function requiresDocumentContext(message) {
     /\b(total|sum|amount|balance|credit|debit|transaction|payment|charge|fee|account)\b/,
     /\b(show me|find|search|locate|extract|list|summarize|summary)\b/,
     /\b(what does (this|the document|it) say|what is mentioned|what shows)\b/,
-    /\b(analyze|review|examine) (this|the)\b/
+    /\b(analyze|review|examine) (this|the)\b/,
+    // More inclusive patterns for document questions
+    /\b(name|address|phone|email|date|number|amount|price|cost|value)\b/,
+    /\b(who|what|when|where|how much|how many)\b.*\b(is|are|was|were)\b/,
+    /\b(tell me|explain|describe|identify)\b/,
+    /\b(content|information|details|data)\b/,
+    /\b(company|organization|person|client|customer)\b/,
+    /\b(project|task|work|job|position|role)\b/,
+    // Specific patterns for the failing questions
+    /\bthis\s+(document|pdf|file)\b/,
+    /\bthe\s+(document|pdf|file)\b/,
+    /\bpurpose\s+of\s+(this|the)\b/,
+    /\babout\s+(this|the)\b/,
+    /\bwhat\s+is\s+(this|the)\b/,
+    /\bwhat\s+does\s+(this|the)\b/
   ];
 
-  // First check if it's clearly a general question
+  // Check if it contains document-specific patterns FIRST
+  const hasDocumentContext = documentPatterns.some(pattern => pattern.test(lowerMessage));
+
+  // If it clearly needs document context, use it regardless of general patterns
+  if (hasDocumentContext) {
+    return true;
+  }
+
+  // Then check if it's clearly a general question
   for (const pattern of generalPatterns) {
     if (pattern.test(lowerMessage)) {
       return false; // If it matches general patterns, it's definitely general
     }
   }
 
-  // Check if it contains document-specific patterns
-  const hasDocumentContext = documentPatterns.some(pattern => pattern.test(lowerMessage));
-
   // For single words or very short phrases without clear document indicators,
   // treat as general questions to avoid false positives
   const wordCount = lowerMessage.trim().split(/\s+/).length;
-  if (wordCount <= 2 && !hasDocumentContext) {
+  if (wordCount <= 2) {
     return false;
   }
 
-  // If it has clear document indicators, use document context
-  if (hasDocumentContext) {
-    return true;
-  }
-
-  // For longer questions without clear indicators, assume they might be document-related
-  // but be more conservative
-  return wordCount > 3;
+  // For longer questions (3+ words), assume they're likely document-related
+  // This is more inclusive for document questions
+  return wordCount >= 3;
 }
 
 // Chat with PDF
@@ -149,8 +163,6 @@ router.post('/message', chatValidation, async (req, res) => {
           }
         });
       }
-
-
 
       // Generate AI response using the relevant context
       aiResponse = await generateResponse(message, relevantChunks, conversationHistory);
@@ -259,10 +271,10 @@ router.post('/message', chatValidation, async (req, res) => {
 router.get('/conversation/:documentId', async (req, res) => {
   try {
     const { documentId } = req.params;
-    
+
     // TODO: Implement conversation history retrieval
     // This could be stored in a simple JSON file or database
-    
+
     res.json({
       success: true,
       data: {
@@ -285,9 +297,9 @@ router.get('/conversation/:documentId', async (req, res) => {
 router.delete('/conversation/:documentId', async (req, res) => {
   try {
     const { documentId } = req.params;
-    
+
     // TODO: Implement conversation history clearing
-    
+
     res.json({
       success: true,
       message: 'Conversation history cleared'
