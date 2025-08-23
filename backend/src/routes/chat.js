@@ -14,43 +14,62 @@ const router = express.Router();
 function requiresDocumentContext(message) {
   const lowerMessage = message.toLowerCase().trim();
 
-  // General questions that don't need document context
+  // Clear general questions that don't need document context
   const generalPatterns = [
-    /^(hi|hello|hey|good morning|good afternoon|good evening)/,
-    /^(what is|what are|define|explain|tell me about|how does|how do|why does|why do)/,
-    /^(can you|could you|would you|will you)/,
-    /^(help|assist|support)/,
-    /^(thank you|thanks|bye|goodbye)/,
-    /^(yes|no|ok|okay|sure|fine)/,
-    /^(who is|who are|when is|when was|where is|where was)/,
-    /^(how to|how can|what can|what should)/
+    /^(hi|hello|hey|good morning|good afternoon|good evening)$/,
+    /^(thank you|thanks|bye|goodbye)$/,
+    /^(yes|no|ok|okay|sure|fine)$/,
+    /^(help|what can you do|how do you work)$/,
+    /^what is (ai|artificial intelligence|machine learning|deep learning)$/,
+    /^how does (ai|artificial intelligence|machine learning) work$/,
+    /^(define|explain|what is|what are) [^.]*$/,
+    /^(how to|how do|how does|why does|why do) [^.]*$/,
+    /^(can you|could you|would you|will you) (help|assist|explain|tell me)$/,
+    /^what (is|are) the (definition|meaning) of$/,
+    /^(who is|who was|when is|when was|where is|where was)$/,
+    // Language and conversation questions
+    /^(can i|may i|should i) (ask|speak|talk|chat) (in|with)$/,
+    /hindi mei|english mei|language|translate/,
+    /^(kya|kaise|kahan|kab|kyun)/,  // Hindi question words
+    /^(what|how|where|when|why) (language|tongue)/,
+    /^(speak|talk|chat|converse) (in|with)/
   ];
 
-  // Document-specific patterns that DO need context
+  // Document-specific indicators that DO need context
   const documentPatterns = [
     /\b(document|pdf|file|page|section|chapter|statement|report|invoice|receipt|contract|agreement)\b/,
-    /\b(total|sum|amount|balance|credit|debit|transaction|payment|charge|fee)\b/,
-    /\b(account|number|date|name|address|phone|email)\b/,
-    /\b(show|find|search|locate|extract|list|summarize|summary)\b/,
-    /\b(according to|based on|from the|in the|on page|mentioned|stated)\b/,
-    /\b(what does|what is mentioned|what says|what shows)\b/
+    /\b(in this|from this|according to this|based on this|mentioned in|stated in|shown in)\b/,
+    /\b(total|sum|amount|balance|credit|debit|transaction|payment|charge|fee|account)\b/,
+    /\b(show me|find|search|locate|extract|list|summarize|summary)\b/,
+    /\b(what does (this|the document|it) say|what is mentioned|what shows)\b/,
+    /\b(analyze|review|examine) (this|the)\b/
   ];
 
-  // Check if it's a general question
+  // First check if it's clearly a general question
   for (const pattern of generalPatterns) {
     if (pattern.test(lowerMessage)) {
-      // But still check if it contains document-specific terms
-      const hasDocumentTerms = documentPatterns.some(docPattern => docPattern.test(lowerMessage));
-      if (!hasDocumentTerms) {
-        return false;
-      }
+      return false; // If it matches general patterns, it's definitely general
     }
   }
 
   // Check if it contains document-specific patterns
   const hasDocumentContext = documentPatterns.some(pattern => pattern.test(lowerMessage));
 
-  return hasDocumentContext;
+  // For single words or very short phrases without clear document indicators,
+  // treat as general questions to avoid false positives
+  const wordCount = lowerMessage.trim().split(/\s+/).length;
+  if (wordCount <= 2 && !hasDocumentContext) {
+    return false;
+  }
+
+  // If it has clear document indicators, use document context
+  if (hasDocumentContext) {
+    return true;
+  }
+
+  // For longer questions without clear indicators, assume they might be document-related
+  // but be more conservative
+  return wordCount > 3;
 }
 
 // Chat with PDF
@@ -131,6 +150,8 @@ router.post('/message', chatValidation, async (req, res) => {
         });
       }
 
+
+
       // Generate AI response using the relevant context
       aiResponse = await generateResponse(message, relevantChunks, conversationHistory);
     } else {
@@ -148,9 +169,12 @@ router.post('/message', chatValidation, async (req, res) => {
     // Only include sources and citations if the question needed document context
     if (needsDocumentContext && relevantChunks.length > 0) {
       responseData.sources = relevantChunks.map((chunk, index) => {
-        const pageNumber = chunk.metadata?.page_number || chunk.metadata?.estimated_page;
+        // Get page number from metadata - prioritize page_number field (most reliable)
+        const pageNumber = chunk.metadata?.page_number;
         const totalPages = chunk.metadata?.num_pages || chunk.metadata?.numPages || 1;
-        const validPageNumber = (pageNumber && pageNumber >= 1 && pageNumber <= totalPages) ? pageNumber : null;
+
+        // Use page number directly if it exists and is valid, no strict validation against totalPages
+        const validPageNumber = (pageNumber && pageNumber >= 1) ? Math.round(pageNumber) : null;
 
         return {
           id: index + 1,
@@ -167,13 +191,12 @@ router.post('/message', chatValidation, async (req, res) => {
       });
 
       responseData.citations = relevantChunks.map((chunk, index) => {
-        // Try multiple possible page number fields for compatibility
-        const pageNumber = chunk.metadata?.page_number || chunk.metadata?.estimated_page;
-        const totalPages = chunk.metadata?.num_pages || chunk.metadata?.numPages || 1;
+        // Get page number from metadata - prioritize page_number field (most reliable)
+        const pageNumber = chunk.metadata?.page_number;
         const chunkIndex = chunk.metadata?.chunk_index;
 
-        // Validate page number
-        const validPageNumber = (pageNumber && pageNumber >= 1 && pageNumber <= totalPages) ? pageNumber : null;
+        // Use page number directly if it exists and is valid, no strict validation
+        const validPageNumber = (pageNumber && pageNumber >= 1) ? Math.round(pageNumber) : null;
 
         // Create a more descriptive label
         const generateSourceLabel = (pageNum, content, index, chunkIdx) => {
