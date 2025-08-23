@@ -4,7 +4,7 @@
   "description": "AI-powered PDF chat backend with vectorization and RAG",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "cross-env NODE_ENV=production node server.js",
     "dev": "cross-env NODE_ENV=development nodemon server.js",
     "prod:test": "cross-env NODE_ENV=production nodemon server.js",
     "test": "jest",

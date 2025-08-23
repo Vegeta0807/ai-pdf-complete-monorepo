@@ -164,7 +164,7 @@ class JobQueue extends EventEmitter {
    */
   async processPdfJob(job) {
     const { processPDF } = require('./pdfService');
-    const { vectorizeDocument } = require('./vectorService');
+    const { vectorizeDocument } = require('../../services/vectorServiceSelector');
     
     try {
       this.updateProgress(job.id, 10, 'Starting PDF processing...');

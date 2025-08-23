@@ -44,15 +44,17 @@ async function generateResponseGroq(message, relevantChunks, conversationHistory
     });
 
     // Build enhanced context from relevant chunks with page information
-    const context = relevantChunks
-      .map((chunk, index) => {
-        // Try multiple possible page number fields for compatibility
-        const pageNumber = chunk.metadata?.page_number || chunk.metadata?.estimated_page || chunk.page;
-        const pageInfo = pageNumber ? ` (Page ${pageNumber})` : '';
-        const chunkInfo = chunk.metadata?.chunk_index !== undefined ? ` [Chunk ${chunk.metadata.chunk_index}]` : '';
-        return `[Source ${index + 1}${pageInfo}${chunkInfo}]: ${chunk.content}`;
-      })
-      .join('\n\n---\n\n');
+    const context = relevantChunks.length > 0
+      ? relevantChunks
+          .map((chunk, index) => {
+            // Try multiple possible page number fields for compatibility
+            const pageNumber = chunk.metadata?.page_number || chunk.metadata?.estimated_page || chunk.page;
+            const pageInfo = pageNumber ? ` (Page ${pageNumber})` : '';
+            const chunkInfo = chunk.metadata?.chunk_index !== undefined ? ` [Chunk ${chunk.metadata.chunk_index}]` : '';
+            return `[Source ${index + 1}${pageInfo}${chunkInfo}]: ${chunk.content}`;
+          })
+          .join('\n\n---\n\n')
+      : '';
 
     // Enhanced financial document detection
     const financialKeywords = [
@@ -78,10 +80,13 @@ async function generateResponseGroq(message, relevantChunks, conversationHistory
     const messages = [
       {
         role: 'system',
-        content: `You are a highly accurate AI assistant specialized in analyzing PDF documents with exceptional precision for structured data, especially financial documents like account statements, invoices, and reports.
+        content: `You are a helpful AI assistant that can both analyze PDF documents and answer general questions.
+
+${context ? `
+DOCUMENT ANALYSIS MODE:
+You are analyzing a PDF document. Use ONLY the information provided in the context below to answer questions.
 
 CORE INSTRUCTIONS:
-- Use ONLY the information provided in the context below to answer questions
 - Be extremely precise with numbers, dates, amounts, and financial data
 - Maintain exact formatting and values from the original document
 - DO NOT include citation patterns like [Source X], [Page Y], or [Chunk Z] in your response text
@@ -89,6 +94,16 @@ CORE INSTRUCTIONS:
 - Preserve the original currency symbols and formats exactly as shown in the document
 - Do not assume currency types - use only what is explicitly shown in the document
 - Each source in the context corresponds to a specific part of the document with page information
+` : `
+GENERAL ASSISTANCE MODE:
+You are answering a general question that doesn't require document analysis. Provide helpful, accurate information based on your knowledge.
+
+CORE INSTRUCTIONS:
+- Be helpful, accurate, and conversational
+- Provide clear explanations and examples when appropriate
+- If you're unsure about something, acknowledge the uncertainty
+- Keep responses concise but informative
+`}
 
 ${isFinancialDoc ? `
 FINANCIAL DOCUMENT EXPERTISE:
@@ -128,8 +143,7 @@ RESPONSE GUIDELINES:
 - When referencing document sections, use natural language like "according to the statement" or "as shown in the document"
 - Instead of citing sources with brackets, simply state the information as fact from the document
 
-CONTEXT FROM PDF:
-${context}`
+${context ? `CONTEXT FROM PDF:\n${context}` : ''}`
       }
     ];
 
@@ -195,17 +209,19 @@ async function generateResponseOpenAI(message, relevantChunks, conversationHisto
     });
 
     // Build enhanced context from relevant chunks with metadata
-    const context = relevantChunks
-      .map((chunk, index) => {
-        // Try multiple possible page number fields for compatibility
-        const pageNumber = chunk.metadata?.page_number || chunk.metadata?.estimated_page || chunk.page;
-        const pageInfo = pageNumber ? `, Page ${pageNumber}` : '';
-        const chunkInfo = chunk.metadata?.chunk_index !== undefined ? `, Chunk ${chunk.metadata.chunk_index}` : '';
-        let chunkText = `[Source ${index + 1}${pageInfo}${chunkInfo}]`;
-        chunkText += `\n${chunk.content}`;
-        return chunkText;
-      })
-      .join('\n\n---\n\n');
+    const context = relevantChunks.length > 0
+      ? relevantChunks
+          .map((chunk, index) => {
+            // Try multiple possible page number fields for compatibility
+            const pageNumber = chunk.metadata?.page_number || chunk.metadata?.estimated_page || chunk.page;
+            const pageInfo = pageNumber ? `, Page ${pageNumber}` : '';
+            const chunkInfo = chunk.metadata?.chunk_index !== undefined ? `, Chunk ${chunk.metadata.chunk_index}` : '';
+            let chunkText = `[Source ${index + 1}${pageInfo}${chunkInfo}]`;
+            chunkText += `\n${chunk.content}`;
+            return chunkText;
+          })
+          .join('\n\n---\n\n')
+      : '';
 
     // Enhanced financial document detection (same as Groq)
     const financialKeywords = [
@@ -231,10 +247,13 @@ async function generateResponseOpenAI(message, relevantChunks, conversationHisto
     const messages = [
       {
         role: 'system',
-        content: `You are a highly accurate AI assistant specialized in analyzing PDF documents. You excel at extracting precise information, especially from structured documents like financial statements, reports, and account statements.
+        content: `You are a helpful AI assistant that can both analyze PDF documents and answer general questions.
+
+${context ? `
+DOCUMENT ANALYSIS MODE:
+You are analyzing a PDF document. Use ONLY the information provided in the context below to answer questions.
 
 CORE INSTRUCTIONS:
-- Use ONLY the information provided in the context below to answer questions
 - Be extremely precise with numbers, dates, and financial data
 - If the context doesn't contain relevant information, say so clearly
 - DO NOT include citation patterns like [Source X], [Page Y], or [Chunk Z] in your response text
@@ -242,6 +261,16 @@ CORE INSTRUCTIONS:
 - Maintain the exact formatting and values from the original document
 - Preserve the original currency symbols and formats exactly as shown in the document
 - Do not assume currency types - use only what is explicitly shown in the document
+` : `
+GENERAL ASSISTANCE MODE:
+You are answering a general question that doesn't require document analysis. Provide helpful, accurate information based on your knowledge.
+
+CORE INSTRUCTIONS:
+- Be helpful, accurate, and conversational
+- Provide clear explanations and examples when appropriate
+- If you're unsure about something, acknowledge the uncertainty
+- Keep responses concise but informative
+`}
 
 ${isFinancialDoc ? `
 FINANCIAL DOCUMENT GUIDELINES:
@@ -279,8 +308,7 @@ RESPONSE FORMAT:
 - When referencing document sections, use natural language like "according to the statement" or "as shown in the document"
 - Instead of citing sources with brackets, simply state the information as fact from the document
 
-CONTEXT FROM PDF:
-${context}`
+${context ? `CONTEXT FROM PDF:\n${context}` : ''}`
       }
     ];
 
