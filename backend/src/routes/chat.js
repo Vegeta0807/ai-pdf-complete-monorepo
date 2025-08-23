@@ -74,16 +74,23 @@ function requiresDocumentContext(message) {
     }
   }
 
-  // For single words or very short phrases without clear document indicators,
-  // treat as general questions to avoid false positives
+  // For single words or very short phrases, check if they could be document-related
   const wordCount = lowerMessage.trim().split(/\s+/).length;
+
+  // If it's a very short phrase (1-2 words), be more permissive
+  // Many legitimate document questions are short: "nociceptors", "summary", "conclusion", etc.
   if (wordCount <= 2) {
-    return false;
+    // Only exclude if it's clearly a greeting or common general word
+    const commonGeneralWords = ['hi', 'hello', 'hey', 'thanks', 'thank you', 'bye', 'goodbye', 'yes', 'no', 'ok', 'okay'];
+    if (commonGeneralWords.includes(lowerMessage)) {
+      return false;
+    }
+    // For other short phrases, assume they might be document-related
+    return true;
   }
 
   // For longer questions (3+ words), assume they're likely document-related
-  // This is more inclusive for document questions
-  return wordCount >= 3;
+  return true;
 }
 
 // Chat with PDF
@@ -145,6 +152,7 @@ router.post('/message', chatValidation, async (req, res) => {
 
     // Check if the question requires document context
     const needsDocumentContext = requiresDocumentContext(message);
+    console.log(`🔍 Document context needed: ${needsDocumentContext}`);
 
     let relevantChunks = [];
     let aiResponse;
@@ -152,6 +160,12 @@ router.post('/message', chatValidation, async (req, res) => {
     if (needsDocumentContext) {
       // Search for relevant chunks in the vector database
       relevantChunks = await searchSimilarChunks(message, documentId, 5);
+      console.log(`📊 Found ${relevantChunks.length} relevant chunks`);
+
+      if (relevantChunks.length > 0) {
+        console.log(`📄 First chunk preview: ${relevantChunks[0].content.substring(0, 100)}...`);
+        console.log(`📋 First chunk metadata:`, relevantChunks[0].metadata);
+      }
 
       if (relevantChunks.length === 0) {
         return res.json({
@@ -179,7 +193,10 @@ router.post('/message', chatValidation, async (req, res) => {
     };
 
     // Only include sources and citations if the question needed document context
+    console.log(`🔧 Building response - needsDocumentContext: ${needsDocumentContext}, chunks: ${relevantChunks.length}`);
+
     if (needsDocumentContext && relevantChunks.length > 0) {
+      console.log(`📝 Building sources and citations for ${relevantChunks.length} chunks`);
       responseData.sources = relevantChunks.map((chunk, index) => {
         // Get page number from metadata - prioritize page_number field (most reliable)
         const pageNumber = chunk.metadata?.page_number;
@@ -251,6 +268,8 @@ router.post('/message', chatValidation, async (req, res) => {
       responseData.sources = [];
       responseData.citations = [];
     }
+
+    console.log(`📤 Sending response with ${responseData.sources?.length || 0} sources and ${responseData.citations?.length || 0} citations`);
 
     res.json({
       success: true,
