@@ -11,7 +11,7 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write src/**/*.{ts,html,scss}",
     "format:check": "prettier --check src/**/*.{ts,html,scss}",
-    "prepare": "echo 'skip husky"
+    "prepare": "echo 'skip husky'"
   },
   "private": true,
   "dependencies": {
