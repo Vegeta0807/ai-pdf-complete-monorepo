@@ -30,7 +30,7 @@
 
     "build": "echo '🔨 Starting build process...' && npm run build:frontend && npm run build:backend && echo '✅ Build complete!'",
     "build:backend": "echo '⚙️ Installing backend deps...' && cd backend && npm install",
-    "build:frontend": "echo '🎨 Building frontend...' && cd frontend && npm install && echo '📦 Frontend deps installed' && npm run build && echo '✅ Frontend build complete' && ls -la dist/"
+    "build:frontend": "echo '🎨 Building frontend...' && cd frontend && npm install && echo '📦 Frontend deps installed' && npm run build && echo '✅ Frontend build complete' && ls -la dist/",
     "railway:build": "cd frontend && npm ci && npm run build && cd ../backend && npm ci",
 
     "start": "cd backend && npm start",
