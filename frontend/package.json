@@ -3,15 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "ng": "node_modules/.bin/ng",
-    "start": "node_modules/.bin/ng serve",
-    "build": "node_modules/.bin/ng build",
-    "watch": "node_modules/.bin/ng build --watch --configuration development",
-    "test": "node_modules/.bin/ng test",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
-    "format": "prettier --write src/**/*.{ts,html,scss}",
-    "format:check": "prettier --check src/**/*.{ts,html,scss}",
+    "ng": "npx ng", 
+    "start": "npx ng serve", 
+    "build": "npx ng build", 
+    "watch": "npx ng build --watch --configuration development", 
+    "test": "npx ng test", 
+    "lint": "eslint src/**/*.ts", 
+    "lint:fix": "eslint src/**/*.ts --fix", 
+    "format": "prettier --write src/**/*.{ts,html,scss}", 
+    "format:check": "prettier --check src/**/*.{ts,html,scss}", 
     "prepare": "echo 'skip husky'"
   },
   "dependencies": {
@@ -29,11 +29,11 @@
     "pdfjs-dist": "^3.11.174",
     "rxjs": "~7.8.0",
     "tslib": "^2.8.1",
-    "zone.js": "^0.14.10"
+    "zone.js": "^0.14.10",
+    "@angular/cli": "^18.2.20"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^18.2.20",
-    "@angular/cli": "^18.2.20",
     "@angular/compiler-cli": "^18.2.0",
     "@types/jasmine": "~5.1.0",
     "@typescript-eslint/eslint-plugin": "^8.39.1",
