@@ -1,19 +1,19 @@
 {
   "name": "ai-pdf-app",
   "version": "0.0.0",
+  "private": true,
   "scripts": {
     "ng": "npx ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test",
+    "start": "npx ng serve",
+    "build": "npx ng build",
+    "watch": "npx ng build --watch --configuration development",
+    "test": "npx ng test",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write src/**/*.{ts,html,scss}",
     "format:check": "prettier --check src/**/*.{ts,html,scss}",
     "prepare": "echo 'skip husky'"
   },
-  "private": true,
   "dependencies": {
     "@angular/animations": "^18.2.0",
     "@angular/cdk": "^18.2.14",
