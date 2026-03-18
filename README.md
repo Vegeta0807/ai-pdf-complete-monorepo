@@ -32,7 +32,7 @@ ai-pdf-chat-monorepo/
 ## 🛠 Tech Stack
 
 - **Backend**: Node.js, Express.js
-- **Frontend**: AngularJS (your existing project)
+- **Frontend**: AngularJS
 - **Vector Database**: ChromaDB (self-hosted)
 - **AI Models**: Groq (primary), OpenAI (fallback)
 - **PDF Processing**: pdf-parse (with LlamaParse integration ready)
